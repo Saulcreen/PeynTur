@@ -494,6 +494,7 @@ Siempre mantén un tono cálido y profesional.`;
   let isLoading = false;
   let recognition = null;
   let isRecording = false;
+  let isNewChat = true; // true = este chat aún no tiene entrada en el historial
 
   function autoResize(el) {
     el.style.height = 'auto';
@@ -503,6 +504,7 @@ Siempre mantén un tono cálido y profesional.`;
 
   function newChat() {
     messages = [];
+    isNewChat = true;
     document.getElementById('chat-area').innerHTML = '';
     document.getElementById('chat-area').classList.remove('visible');
     document.getElementById('welcome').classList.remove('hidden');
@@ -526,7 +528,7 @@ Siempre mantén un tono cálido y profesional.`;
 
     messages.push({ role: 'user', content: text });
     appendMessage('user', text);
-    addHistory(text);
+    if (isNewChat) { addHistory(text); isNewChat = false; }
     input.value = '';
     input.style.height = 'auto';
 
