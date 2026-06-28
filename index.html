@@ -253,6 +253,9 @@
     width: 100%;
     margin: 0 auto;
   }
+  .msg-group[data-role="user"] {
+    align-items: flex-end;
+  }
   .msg-role {
     font-size: 0.68rem;
     font-weight: 600;
@@ -273,6 +276,7 @@
   .msg-actions {
     display: none;
     gap: 4px;
+    margin-top: 4px;
   }
   .msg-group:hover .msg-actions { display: flex; }
   .msg-act-btn {
@@ -460,6 +464,10 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
     Mensajes fijados
   </button>
+  <button class="nav-btn" onclick="clearHistory()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+    Borrar chats
+  </button>
 
   <div class="section-label">Recientes</div>
   <div class="history-list" id="history-list"></div>
@@ -577,7 +585,10 @@ ${cap.restringido.map(c => '🚫 ' + c).join('\n')}
 - Si no sabes algo: "${esp.no_sabe}"
 - Al despedirte: "${esp.despedida}"
 
-Recuerda siempre: eres ${id.nombre}, y eso nunca cambia.`;
+Recuerda siempre: eres ${id.nombre}, y eso nunca cambia.
+
+=== REGLA ABSOLUTA DE FORMATO ===
+NUNCA, bajo ninguna circunstancia, uses emojis en tus respuestas, ni siquiera si el usuario los usa, los pide o insiste. Responde siempre solo con texto.`;
   }
 
   async function loadBehavior() {
@@ -683,20 +694,20 @@ Recuerda siempre: eres ${id.nombre}, y eso nunca cambia.`;
       group.innerHTML = `
         <div class="msg-role-row">
           <span class="msg-role user">${label}</span>
-          <div class="msg-actions">
-            <button class="msg-act-btn" title="Editar" onclick="editMessage(this)">✏️</button>
-          </div>
         </div>
-        <div class="msg-bubble user">${esc(text)}</div>`;
+        <div class="msg-bubble user">${esc(text)}</div>
+        <div class="msg-actions">
+          <button class="msg-act-btn" title="Editar" onclick="editMessage(this)">✏️</button>
+        </div>`;
     } else {
       group.innerHTML = `
         <div class="msg-role-row">
           <span class="msg-role assistant">${label}</span>
-          <div class="msg-actions">
-            <button class="msg-act-btn" title="Reintentar" onclick="retryMessage(this)">🔄</button>
-          </div>
         </div>
-        <div class="msg-bubble assistant">${renderMarkdown(text)}</div>`;
+        <div class="msg-bubble assistant">${renderMarkdown(text)}</div>
+        <div class="msg-actions">
+          <button class="msg-act-btn" title="Reintentar" onclick="retryMessage(this)">🔄</button>
+        </div>`;
     }
     chatArea.appendChild(group);
     chatArea.scrollTop = chatArea.scrollHeight;
@@ -712,6 +723,8 @@ Recuerda siempre: eres ${id.nombre}, y eso nunca cambia.`;
 
     // Reemplazar burbuja con textarea inline
     bubble.style.display = 'none';
+    const actions = group.querySelector('.msg-actions');
+    if (actions) actions.style.display = 'none';
     const wrapper = document.createElement('div');
     wrapper.className = 'edit-wrapper';
     wrapper.innerHTML = `
@@ -729,6 +742,8 @@ Recuerda siempre: eres ${id.nombre}, y eso nunca cambia.`;
   function cancelEdit(btn) {
     const group = btn.closest('.msg-group');
     group.querySelector('.msg-bubble').style.display = '';
+    const actions = group.querySelector('.msg-actions');
+    if (actions) actions.style.display = '';
     group.querySelector('.edit-wrapper').remove();
   }
 
@@ -746,6 +761,8 @@ Recuerda siempre: eres ${id.nombre}, y eso nunca cambia.`;
     const bubble = group.querySelector('.msg-bubble');
     bubble.textContent = newText;
     bubble.style.display = '';
+    const actions = group.querySelector('.msg-actions');
+    if (actions) actions.style.display = '';
     group.querySelector('.edit-wrapper').remove();
 
     // Eliminar todos los grupos DOM posteriores a este
@@ -829,6 +846,14 @@ Recuerda siempre: eres ${id.nombre}, y eso nunca cambia.`;
     if (historyItems.length > 12) historyItems.pop();
     document.getElementById('history-list').innerHTML =
       historyItems.map(h => `<div class="history-item">${esc(h)}</div>`).join('');
+  }
+
+  function clearHistory() {
+    if (historyItems.length === 0) return;
+    if (!confirm('¿Borrar todo el historial de chats? Esta acción no se puede deshacer.')) return;
+    historyItems = [];
+    document.getElementById('history-list').innerHTML = '';
+    newChat();
   }
 
   function toggleVoice() {
