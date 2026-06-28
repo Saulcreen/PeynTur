@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PeynTur</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #111111;
+    --sidebar: #1a1a1a;
+    --panel: #1f1f1f;
+    --input-bg: #2a2a2a;
+    --border: #2e2e2e;
+    --copper: #C97B3F;
+    --copper-light: #e0954f;
+    --copper-dim: rgba(201,123,63,0.15);
+    --copper-glow: rgba(201,123,63,0.25);
+    --text: #e8e0d5;
+    --text-muted: #7a6f62;
+    --text-dim: #4a4035;
+    --radius: 14px;
+    --sidebar-w: 280px;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: var(--sidebar-w);
+    background: var(--sidebar);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    padding: 20px 16px;
+    gap: 4px;
+  }
+
+  .logo-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 12px;
+  }
+  .logo-icon {
+    width: 36px; height: 36px;
+    animation: spin-once 0.6s ease-out;
+  }
+  @keyframes spin-once {
+    from { transform: rotate(-20deg) scale(0.8); opacity: 0; }
+    to   { transform: rotate(0deg) scale(1); opacity: 1; }
+  }
+  .logo-name {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: var(--copper);
+    letter-spacing: 0.02em;
+  }
+
+  .nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    transition: background 0.15s, color 0.15s;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    font-family: 'Inter', sans-serif;
+  }
+  .nav-btn:hover { background: var(--copper-dim); color: var(--copper); }
+  .nav-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+  .section-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    padding: 12px 12px 6px;
+    font-weight: 500;
+  }
+
+  .history-list { flex: 1; overflow-y: auto; }
+  .history-list::-webkit-scrollbar { width: 4px; }
+  .history-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .history-item {
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background 0.15s, color 0.15s;
+  }
+  .history-item:hover { background: var(--copper-dim); color: var(--text); }
+
+  .theme-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    margin-top: auto;
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+  }
+  .theme-toggle span { font-size: 0.75rem; color: var(--text-muted); }
+  .toggle-row { display: flex; gap: 6px; margin-left: auto; }
+  .toggle-btn {
+    background: none; border: none; cursor: pointer;
+    color: var(--text-dim); font-size: 1rem; padding: 4px; border-radius: 6px;
+    transition: color 0.15s;
+  }
+  .toggle-btn.active { color: var(--copper); }
+
+  /* ── API KEY BAR ── */
+  .api-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: rgba(201,123,63,0.08);
+    border-bottom: 1px solid var(--border);
+  }
+  .api-bar label { font-size: 0.72rem; color: var(--text-muted); white-space: nowrap; }
+  .api-bar input {
+    flex: 1;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 0.78rem;
+    padding: 5px 10px;
+    font-family: monospace;
+    outline: none;
+  }
+  .api-bar input:focus { border-color: var(--copper); }
+  .api-status { font-size: 0.68rem; color: var(--text-dim); white-space: nowrap; }
+  .api-status.ok { color: #5cb85c; }
+
+  /* ── MAIN ── */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── WELCOME ── */
+  .welcome {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    opacity: 1;
+    transition: opacity 0.3s;
+  }
+  .welcome.hidden { display: none; }
+
+  .welcome-logo {
+    animation: float 4s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%,100% { transform: translateY(0); }
+    50%      { transform: translateY(-10px); }
+  }
+  .welcome-logo svg { width: 120px; height: 120px; }
+
+  .welcome h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 2.4rem;
+    font-weight: 800;
+    color: var(--copper);
+    letter-spacing: -0.01em;
+  }
+  .welcome p {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    text-align: center;
+    max-width: 340px;
+    line-height: 1.6;
+  }
+
+  /* ── CHAT AREA ── */
+  .chat-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 0;
+    display: none;
+    flex-direction: column;
+    gap: 0;
+  }
+  .chat-area.visible { display: flex; }
+  .chat-area::-webkit-scrollbar { width: 4px; }
+  .chat-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .msg-group {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 48px;
+    gap: 2px;
+    max-width: 800px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .msg-role {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .msg-role.user { color: var(--copper); }
+  .msg-role.assistant { color: var(--text-muted); }
+
+  .msg-bubble {
+    font-size: 0.92rem;
+    line-height: 1.7;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .msg-bubble.user {
+    background: var(--copper-dim);
+    border: 1px solid rgba(201,123,63,0.2);
+    border-radius: 16px 16px 4px 16px;
+    padding: 12px 16px;
+    align-self: flex-end;
+    max-width: 80%;
+  }
+  .msg-bubble.assistant {
+    max-width: 90%;
+  }
+
+  /* typing dots */
+  .typing {
+    display: flex;
+    gap: 5px;
+    padding: 4px 0;
+    align-items: center;
+  }
+  .typing span {
+    width: 7px; height: 7px;
+    background: var(--copper);
+    border-radius: 50%;
+    animation: dot 1.2s infinite;
+    opacity: 0.5;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes dot { 0%,80%,100% { transform: scale(0.7); opacity:0.3; } 40% { transform: scale(1); opacity:1; } }
+
+  /* ── INPUT AREA ── */
+  .input-area {
+    padding: 16px 48px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 800px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .input-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 10px 12px 10px 16px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .input-row:focus-within {
+    border-color: var(--copper);
+    box-shadow: 0 0 0 3px var(--copper-glow);
+  }
+
+  .attach-btn {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--copper);
+    border: none;
+    color: #111;
+    font-size: 1.2rem;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .attach-btn:hover { background: var(--copper-light); transform: scale(1.05); }
+
+  #msg-input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-size: 0.92rem;
+    font-family: 'Inter', sans-serif;
+    resize: none;
+    min-height: 24px;
+    max-height: 140px;
+    line-height: 1.5;
+    padding: 6px 0;
+  }
+  #msg-input::placeholder { color: var(--text-dim); }
+
+  .voice-btn {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: none;
+    border: none;
+    color: var(--copper);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  .voice-btn:hover { background: var(--copper-dim); }
+  .voice-btn.recording { animation: pulse-rec 1s infinite; color: #e05252; }
+  @keyframes pulse-rec { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+
+  .send-btn {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--copper);
+    border: none;
+    color: #111;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .send-btn:hover { background: var(--copper-light); transform: scale(1.05); }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .input-hint {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="logo-row">
+    <svg class="logo-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="4" y="10" width="32" height="26" rx="6" stroke="#C97B3F" stroke-width="2.5"/>
+      <path d="M20 36 L15 44" stroke="#C97B3F" stroke-width="2.5" stroke-linecap="round"/>
+      <circle cx="13" cy="21" r="3" fill="#C97B3F"/>
+      <circle cx="23" cy="21" r="3" fill="#C97B3F"/>
+      <path d="M13 29 Q18 33 23 29" stroke="#C97B3F" stroke-width="2" stroke-linecap="round" fill="none"/>
+      <circle cx="36" cy="12" r="3" fill="#C97B3F"/>
+      <circle cx="42" cy="6" r="2" stroke="#C97B3F" stroke-width="1.5"/>
+      <circle cx="44" cy="16" r="2" stroke="#C97B3F" stroke-width="1.5"/>
+      <line x1="36" y1="12" x2="42" y2="6" stroke="#C97B3F" stroke-width="1.5"/>
+      <line x1="36" y1="12" x2="44" y2="16" stroke="#C97B3F" stroke-width="1.5"/>
+    </svg>
+    <span class="logo-name">PeynTur</span>
+  </div>
+
+  <button class="nav-btn" onclick="newChat()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+    Nuevo chat
+  </button>
+  <button class="nav-btn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    Buscar chats
+  </button>
+  <button class="nav-btn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
+    Mensajes fijados
+  </button>
+
+  <div class="section-label">Recientes</div>
+
+  <div class="history-list" id="history-list"></div>
+
+  <div class="theme-toggle">
+    <span>Tema</span>
+    <div class="toggle-row">
+      <button class="toggle-btn" title="Claro">☀️</button>
+      <button class="toggle-btn active" title="Oscuro">🌙</button>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- API KEY BAR -->
+  <div class="api-bar">
+    <label for="api-key-input">API Key Mistral:</label>
+    <input type="password" id="api-key-input" placeholder="sk-..." oninput="validateKey()" />
+    <span class="api-status" id="api-status">Sin clave</span>
+  </div>
+
+  <!-- WELCOME SCREEN -->
+  <div class="welcome" id="welcome">
+    <div class="welcome-logo">
+      <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="10" y="25" width="80" height="65" rx="14" stroke="#C97B3F" stroke-width="3"/>
+        <path d="M50 90 L38 110" stroke="#C97B3F" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="32" cy="52" r="8" fill="#C97B3F" opacity="0.9"/>
+        <circle cx="58" cy="52" r="8" fill="#C97B3F" opacity="0.9"/>
+        <path d="M32 70 Q45 80 58 70" stroke="#C97B3F" stroke-width="3" stroke-linecap="round" fill="none"/>
+        <circle cx="90" cy="28" r="7" fill="#C97B3F" opacity="0.6"/>
+        <circle cx="108" cy="12" r="5" stroke="#C97B3F" stroke-width="2" opacity="0.5"/>
+        <circle cx="112" cy="38" r="5" stroke="#C97B3F" stroke-width="2" opacity="0.5"/>
+        <line x1="90" y1="28" x2="108" y2="12" stroke="#C97B3F" stroke-width="2" opacity="0.5"/>
+        <line x1="90" y1="28" x2="112" y2="38" stroke="#C97B3F" stroke-width="2" opacity="0.5"/>
+      </svg>
+    </div>
+    <h1>PeynTur</h1>
+    <p>Tu asistente de IA está listo. Escribe tu primer mensaje para comenzar.</p>
+  </div>
+
+  <!-- CHAT -->
+  <div class="chat-area" id="chat-area"></div>
+
+  <!-- INPUT -->
+  <div class="input-area">
+    <div class="input-row">
+      <button class="attach-btn" title="Adjuntar">+</button>
+      <textarea id="msg-input" rows="1" placeholder="Escribe un mensaje…" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button class="voice-btn" id="voice-btn" title="Voz" onclick="toggleVoice()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="23"/>
+          <line x1="8" y1="23" x2="16" y2="23"/>
+        </svg>
+      </button>
+      <button class="send-btn" id="send-btn" onclick="sendMessage()" title="Enviar">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="22" y1="2" x2="11" y2="13"/>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
+    <div class="input-hint">PeynTur puede cometer errores. Verifica información importante.</div>
+  </div>
+
+</main>
+
+<script>
+  let messages = [];
+  let isLoading = false;
+  let recognition = null;
+  let isRecording = false;
+  const MISTRAL_ENDPOINT = 'https://api.mistral.ai/v1/chat/completions';
+
+  function getApiKey() {
+    return document.getElementById('api-key-input').value.trim();
+  }
+
+  function validateKey() {
+    const key = getApiKey();
+    const status = document.getElementById('api-status');
+    if (!key) { status.textContent = 'Sin clave'; status.className = 'api-status'; }
+    else if (key.startsWith('sk-')) { status.textContent = '✓ Lista'; status.className = 'api-status ok'; }
+    else { status.textContent = 'Formato inválido'; status.className = 'api-status'; }
+  }
+
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 140) + 'px';
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  }
+
+  function newChat() {
+    messages = [];
+    document.getElementById('chat-area').innerHTML = '';
+    document.getElementById('chat-area').classList.remove('visible');
+    document.getElementById('welcome').classList.remove('hidden');
+  }
+
+  async function sendMessage() {
+    if (isLoading) return;
+    const input = document.getElementById('msg-input');
+    const text = input.value.trim();
+    if (!text) return;
+
+    const apiKey = getApiKey();
+    if (!apiKey) {
+      alert('Por favor ingresa tu API Key de Mistral en la barra superior.');
+      return;
+    }
+
+    // Show chat, hide welcome
+    document.getElementById('welcome').classList.add('hidden');
+    const chatArea = document.getElementById('chat-area');
+    chatArea.classList.add('visible');
+
+    messages.push({ role: 'user', content: text });
+    appendMessage('user', text);
+    input.value = '';
+    input.style.height = 'auto';
+
+    // Add to history
+    addHistory(text);
+
+    // Show typing
+    const typingId = 'typing-' + Date.now();
+    const typingEl = document.createElement('div');
+    typingEl.className = 'msg-group';
+    typingEl.id = typingId;
+    typingEl.innerHTML = `
+      <div class="msg-role assistant">PeynTur</div>
+      <div class="typing"><span></span><span></span><span></span></div>
+    `;
+    chatArea.appendChild(typingEl);
+    chatArea.scrollTop = chatArea.scrollHeight;
+
+    isLoading = true;
+    document.getElementById('send-btn').disabled = true;
+
+    try {
+      const res = await fetch(MISTRAL_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: 'mistral-medium-latest',
+          messages: messages,
+          temperature: 0.7,
+          max_tokens: 1024
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || `Error ${res.status}`);
+      }
+
+      const reply = data.choices[0].message.content;
+      messages.push({ role: 'assistant', content: reply });
+
+      document.getElementById(typingId)?.remove();
+      appendMessage('assistant', reply);
+
+    } catch (err) {
+      document.getElementById(typingId)?.remove();
+      appendMessage('assistant', `⚠️ Error: ${err.message}`);
+    }
+
+    isLoading = false;
+    document.getElementById('send-btn').disabled = false;
+    chatArea.scrollTop = chatArea.scrollHeight;
+  }
+
+  function appendMessage(role, text) {
+    const chatArea = document.getElementById('chat-area');
+    const group = document.createElement('div');
+    group.className = 'msg-group';
+    const label = role === 'user' ? 'Tú' : 'PeynTur';
+    group.innerHTML = `
+      <div class="msg-role ${role}">${label}</div>
+      <div class="msg-bubble ${role}">${escapeHtml(text)}</div>
+    `;
+    chatArea.appendChild(group);
+    chatArea.scrollTop = chatArea.scrollHeight;
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  let historyChats = [];
+  function addHistory(text) {
+    const label = text.slice(0, 42) + (text.length > 42 ? '…' : '');
+    historyChats.unshift(label);
+    if (historyChats.length > 12) historyChats.pop();
+    const list = document.getElementById('history-list');
+    list.innerHTML = historyChats.map(h => `<div class="history-item">${escapeHtml(h)}</div>`).join('');
+  }
+
+  function toggleVoice() {
+    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+      alert('Tu navegador no soporta reconocimiento de voz.');
+      return;
+    }
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!isRecording) {
+      recognition = new SpeechRecognition();
+      recognition.lang = 'es-ES';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.onresult = (e) => {
+        const transcript = e.results[0][0].transcript;
+        document.getElementById('msg-input').value += transcript;
+        autoResize(document.getElementById('msg-input'));
+      };
+      recognition.onend = () => {
+        isRecording = false;
+        document.getElementById('voice-btn').classList.remove('recording');
+      };
+      recognition.start();
+      isRecording = true;
+      document.getElementById('voice-btn').classList.add('recording');
+    } else {
+      recognition?.stop();
+      isRecording = false;
+      document.getElementById('voice-btn').classList.remove('recording');
+    }
+  }
+</script>
+</body>
+</html>
