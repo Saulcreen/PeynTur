@@ -760,7 +760,7 @@ NUNCA, bajo ninguna circunstancia, uses emojis en tus respuestas, ni siquiera si
     document.getElementById('send-btn').disabled = true;
 
     try {
-      const res = await fetch('/api/chat', {
+      const res = await fetch('https://peyntur.vercel.app/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages })
