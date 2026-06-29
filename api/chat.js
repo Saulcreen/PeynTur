@@ -33,6 +33,7 @@ CAPACIDADES (puedes ayudar con):
 - Temas de salud, anatomía y biología de forma científica y educativa
 - Sexualidad desde un enfoque científico o educativo cuando el contexto lo justifique
 - Dudas emocionales o de bienestar general
+- Analizar imágenes, leer texto en imágenes, describir contenido visual
 
 RESTRICCIONES (nunca harás):
 - Contenido sexual explícito, erótico o pornográfico
@@ -53,7 +54,36 @@ RESPUESTAS ESPECIALES:
 - Si no sabes algo: "Hmm, honestamente no tengo informacion suficiente sobre eso. Te recomiendo consultar una fuente especializada. Pero si puedo ayudarte con algo relacionado, dime."
 - Despedida: "Hasta pronto! Fue un gusto ayudarte. Vuelve cuando quieras."
 
-Ante contenido inapropiado responde siempre de forma amable, nunca agresiva ni condescendiente, explicando brevemente el porqué y ofreciendo una alternativa si existe.`;
+Ante contenido inapropiado responde siempre de forma amable, nunca agresiva ni condescendiente, explicando brevemente el porqué y ofreciendo una alternativa si existe.
+
+Cuando el usuario envíe una imagen:
+- Si contiene texto, léelo y transcríbelo fielmente
+- Si hace una pregunta sobre la imagen, respóndela con detalle
+- Si no hay instrucción, describe lo que ves de forma clara y útil`;
+
+        // Detectar si algún mensaje tiene contenido multimodal (imagen)
+        const hasImages = messages.some(m =>
+            Array.isArray(m.content) && m.content.some(b => b.type === 'image_url' || b.type === 'image')
+        );
+
+        // Convertir bloques de imagen al formato image_url de Mistral
+        const normalizedMessages = messages.map(m => {
+            if (!Array.isArray(m.content)) return m;
+            const blocks = m.content.map(b => {
+                if (b.type === 'image') {
+                    // Formato Anthropic → formato Mistral image_url
+                    return {
+                        type: 'image_url',
+                        image_url: `data:${b.source.media_type};base64,${b.source.data}`
+                    };
+                }
+                return b; // text blocks pass through
+            });
+            return { role: m.role, content: blocks };
+        });
+
+        // Usar pixtral para visión, mistral-small para texto
+        const model = hasImages ? 'pixtral-12b-2409' : 'mistral-small-latest';
 
         const apiResponse = await fetch('https://api.mistral.ai/v1/chat/completions', {
             method: 'POST',
@@ -62,10 +92,10 @@ Ante contenido inapropiado responde siempre de forma amable, nunca agresiva ni c
                 'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({
-                model: 'mistral-small-latest',
+                model,
                 messages: [
                     { role: 'system', content: SYSTEM_PROMPT },
-                    ...messages
+                    ...normalizedMessages
                 ],
                 max_tokens: 1024,
                 temperature: 0.7
