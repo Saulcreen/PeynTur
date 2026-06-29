@@ -603,10 +603,23 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
   }
 
   function renderHistory(items, isFiltered) {
-    document.getElementById('history-list').innerHTML = items.map(h => {
+    // Pinned first, then rest
+    const sorted = [...items].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+    document.getElementById('history-list').innerHTML = sorted.map(h => {
       const realIdx = historyItems.indexOf(h);
-      return `<div class="history-item" onclick="loadChat(${realIdx})" title="${esc(h.title)}">${esc(h.title)}</div>`;
+      const pinnedIcon = h.pinned ? '📌 ' : '';
+      return `<div class="history-item-row" style="display:flex;align-items:center;gap:2px;border-radius:7px;transition:background 0.15s;" onmouseover="this.style.background='var(--copper-dim)'" onmouseout="this.style.background='none'">
+        <div class="history-item" style="flex:1;border-radius:7px;background:none;" onclick="loadChat(${realIdx})" title="${esc(h.title)}">${pinnedIcon}${esc(h.title)}</div>
+        <button onclick="togglePinChat(${realIdx})" title="${h.pinned ? 'Desfijar' : 'Fijar'}" style="background:none;border:none;cursor:pointer;padding:4px 5px;color:${h.pinned ? 'var(--copper)' : 'var(--text-dim)'};font-size:0.75rem;flex-shrink:0;opacity:0.8;border-radius:5px;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'">📌</button>
+      </div>`;
     }).join('');
+  }
+
+  /* ─── FIJAR CHAT ─── */
+  function togglePinChat(idx) {
+    if (idx < 0 || idx >= historyItems.length) return;
+    historyItems[idx].pinned = !historyItems[idx].pinned;
+    renderHistory(historyItems);
   }
 
   /* ─── CARGAR CHAT ─── */
@@ -614,6 +627,7 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
     if (idx < 0 || idx >= historyItems.length) return;
     currentChatIdx = idx;
     const entry = historyItems[idx];
+    if (entry.pinned === undefined) entry.pinned = false;
     messages = [...entry.messages];
     isNewChat = false;
 
@@ -638,36 +652,26 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
     newChat();
   }
 
-  /* ─── MENSAJES FIJADOS ─── */
+  /* ─── CHATS FIJADOS ─── */
   function showPinned() {
+    const pinned = historyItems.filter(h => h.pinned);
     const list = document.getElementById('pinned-list');
-    if (pinnedMessages.length === 0) {
-      list.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;">No hay mensajes fijados aun.</p>';
+    if (pinned.length === 0) {
+      list.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;">No hay chats fijados. Usa el icono 📌 junto a un chat en Recientes para fijarlo.</p>';
     } else {
-      list.innerHTML = pinnedMessages.map((m, i) => `
-        <div style="background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:0.85rem;color:var(--text);line-height:1.6;position:relative;">
-          <span style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;color:var(--copper);display:block;margin-bottom:4px;">${m.role === 'user' ? 'Tu' : 'PeynTur'}</span>
-          ${m.role === 'assistant' ? renderMarkdown(m.content) : esc(m.content)}
-          <button onclick="unpinMessage(${i})" title="Desfijar" style="position:absolute;top:8px;right:8px;background:none;border:none;cursor:pointer;color:var(--text-dim);font-size:0.75rem;padding:2px 5px;border-radius:5px;" onmouseover="this.style.color='#e06060'" onmouseout="this.style.color='var(--text-dim)'">x</button>
-        </div>`).join('');
+      list.innerHTML = pinned.map(h => {
+        const realIdx = historyItems.indexOf(h);
+        return `<div style="background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:0.85rem;color:var(--text);display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;" onclick="loadChat(${realIdx});closePinned()">
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">📌 ${esc(h.title)}</span>
+          <button onclick="event.stopPropagation();togglePinChat(${realIdx});showPinned()" title="Desfijar" style="background:none;border:none;cursor:pointer;color:#e06060;font-size:0.75rem;padding:2px 5px;border-radius:5px;flex-shrink:0;">Desfijar</button>
+        </div>`;
+      }).join('');
     }
     document.getElementById('pinned-panel').style.display = 'flex';
   }
 
   function closePinned() {
     document.getElementById('pinned-panel').style.display = 'none';
-  }
-
-  function unpinMessage(idx) {
-    pinnedMessages.splice(idx, 1);
-    showPinned();
-  }
-
-  function pinMessage(msgIdx) {
-    if (msgIdx < 0 || msgIdx >= messages.length) return;
-    const m = messages[msgIdx];
-    const already = pinnedMessages.some(p => p.content === m.content && p.role === m.role);
-    if (!already) pinnedMessages.push({ role: m.role, content: m.content });
   }
 
   function autoResize(el) {
@@ -739,7 +743,6 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
         <div class="msg-role-row"><span class="msg-role user">${label}</span></div>
         <div class="msg-bubble user">${esc(text)}</div>
         <div class="msg-actions">
-          <button class="msg-act-btn pin-btn" title="Fijar" onclick="pinMessage(${idx})">📌</button>
           <button class="msg-act-btn" title="Editar" onclick="editMessage(this)">✏️</button>
         </div>`;
     } else {
@@ -747,7 +750,6 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
         <div class="msg-role-row"><span class="msg-role assistant">${label}</span></div>
         <div class="msg-bubble assistant">${renderMarkdown(text)}</div>
         <div class="msg-actions">
-          <button class="msg-act-btn pin-btn" title="Fijar" onclick="pinMessage(${idx})">📌</button>
           <button class="msg-act-btn" title="Reintentar" onclick="retryMessage(this)">🔄</button>
         </div>`;
     }
@@ -866,7 +868,7 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
     const snippet = messages.slice(0, 4)
       .map(m => `${m.role === 'user' ? 'Usuario' : 'PeynTur'}: ${m.content.slice(0, 100)}`)
       .join('\n');
-    const titlePrompt = `Da un titulo corto (maximo 6 palabras) en español que describa el tema de esta conversacion. Solo el titulo, sin comillas ni puntuacion extra:\n\n${snippet}`;
+    const titlePrompt = `Responde SOLO con un titulo de maximo 5 palabras en español que describa el tema principal de esta conversacion. Sin comillas, sin puntos, sin prefijos como "Titulo:" o "Sugerencia:". Solo las palabras del titulo:\n\n${snippet}`;
 
     let title = messages[0]?.content?.slice(0, 44) || 'Chat';
 
@@ -878,12 +880,15 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
       });
       if (res.ok) {
         const data = await res.json();
-        const t = data.choices?.[0]?.message?.content?.trim();
-        if (t && t.length < 80) title = t;
+        let t = data.choices?.[0]?.message?.content?.trim() || '';
+        // Limpiar prefijos comunes que el modelo puede devolver
+        t = t.replace(/^(titulo|sugerencia|tema|asunto)[:\-\s]*/i, '').trim();
+        t = t.replace(/^["'«»]|["'«»]$/g, '').trim();
+        if (t && t.length > 0 && t.length < 80) title = t;
       }
     } catch (_) {}
 
-    const entry = { title, messages: [...messages] };
+    const entry = { title, messages: [...messages], pinned: false };
     historyItems.unshift(entry);
     if (historyItems.length > 20) historyItems.pop();
     currentChatIdx = 0;
