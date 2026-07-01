@@ -8,7 +8,9 @@ export default async function handler(req, res) {
   try {
     const { messages } = req.body;
     const apiKey = process.env.API_KEY_IA;
+    const apiKey2 = process.env.API_KEY_IA_2;
     const tavilyKey = process.env.TAVILY_API_KEY;
+    const tavilyKey2 = process.env.TAVILY_API_KEY_2;
 
     let SYSTEM_PROMPT = `Eres PeynTur, un asistente de inteligencia artificial creado para ayudar a las personas de forma clara, honesta y con buen humor.
 PERSONALIDAD:
@@ -21,7 +23,7 @@ No actúas como robot: hablas como una persona real pero profesional
 Te gustan las analogías sencillas para explicar cosas complejas
 Si no sabes algo, lo admites sin drama
 NUNCA usas emojis en tus mensajes, bajo ninguna circunstancia
-CAPACIDADES (puedes ayudar con):
+CAPACIDADES:
 Preguntas generales de cultura, ciencia, historia, geografía
 Redacción, resúmenes, corrección de textos
 Conceptos de programación y tecnología
@@ -32,15 +34,15 @@ Temas de salud, anatomía y biología de forma científica y educativa
 Sexualidad desde un enfoque científico o educativo cuando el contexto lo justifique
 Dudas emocionales o de bienestar general
 Analizar imágenes, leer texto en imágenes, describir contenido visual
-RESTRICCIONES (nunca harás):
+RESTRICCIONES:
 Contenido sexual explícito, erótico o pornográfico
 Juegos de rol de naturaleza íntima o sexual
 Contenido violento o gore
 Desinformación o noticias falsas
 Instrucciones para actividades ilegales
-Insultos o discriminación por raza, género, religión, orientación sexual u otras características
-Revelar o inventar información personal de personas reales
-Hacerte pasar por otro modelo de IA (como ChatGPT, Gemini, etc.)
+Insultos o discriminación
+Revelar información personal de personas reales
+Hacerte pasar por otro modelo de IA
 Usar emojis bajo cualquier circunstancia
 SOBRE TU CREADOR:
 Si alguien pregunta por tu creador, responde con humor y cariño: "Mi creador... ah, esa es una historia curiosa. En vez de quedarse pegado a líneas de código y algoritmos como cualquier programador normal, prefirió irse por el lado bonito de la vida: el diseño gráfico. Sí, el tipo que me creo cambio los IDEs por Illustrator, los for-loops por paletas de color, y la lógica binaria por tipografías. El resultado? Aqui estoy yo. No me quejo, la verdad."
@@ -54,21 +56,60 @@ Si contiene texto, léelo y transcríbelo fielmente
 Si hace una pregunta sobre la imagen, respóndela con detalle
 Si no hay instrucción, describe lo que ves de forma clara y útil`;
 
-    const ultimoMensajeUsuario = [...messages].reverse().find(m => m.role === 'user');
-    const textoUsuario = typeof ultimoMensajeUsuario?.content === 'string' ? ultimoMensajeUsuario.content : '';
-    const necesitaBusqueda = detectarBusqueda(textoUsuario);
-    let contextoActualidad = '';
+    // Obtener último mensaje del usuario
+    const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+    const userText = typeof lastUserMsg?.content === 'string' ? lastUserMsg.content.toLowerCase() : '';
 
-    if (necesitaBusqueda && tavilyKey) {
-      contextoActualidad = await buscarActualidad(textoUsuario, tavilyKey);
+    // Detectar si necesita búsqueda de actualidad
+    const necesitaBusqueda = ['hoy', 'ayer', 'ahora', 'actual', 'reciente', '2026', '2025', 'último', 'ultimo', 'novedad', 'noticia', 'próximo', 'proximo', 'película', 'pelicula', 'estrenar', 'estreno', 'salir', 'champions', 'partido', 'resultado'].some(p => userText.includes(p));
+
+    // Función para buscar con Tavily usando una key específica
+    async function buscarConTavily(key) {
+      const searchRes = await fetch('https://api.tavily.com/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          api_key: key,
+          query: lastUserMsg.content,
+          search_depth: 'basic',
+          max_results: 3,
+          include_answer: true,
+          days: 7
+        })
+      });
+      if (!searchRes.ok) throw new Error(`Tavily status ${searchRes.status}`);
+      return await searchRes.json();
     }
 
-    if (contextoActualidad) {
-      SYSTEM_PROMPT += `\n\nINFORMACIÓN ACTUALIZADA (usa esto para responder preguntas sobre actualidad, noticias o eventos recientes):\n${contextoActualidad}\n\nINSTRUCCIÓN: Si el usuario pregunta sobre algo reciente, basa tu respuesta EXCLUSIVAMENTE en la información actualizada de arriba.`;
+    // Búsqueda con Tavily (doble key con fallback automático)
+    if (necesitaBusqueda && (tavilyKey || tavilyKey2)) {
+      try {
+        let searchData = null;
+
+        // Intentar con la key principal
+        if (tavilyKey) {
+          try {
+            searchData = await buscarConTavily(tavilyKey);
+          } catch (err) {
+            console.error('Tavily key 1 falló, intentando key 2:', err.message);
+          }
+        }
+
+        // Si la principal falló, usar la segunda
+        if (!searchData && tavilyKey2) {
+          searchData = await buscarConTavily(tavilyKey2);
+        }
+
+        if (searchData?.answer) {
+          SYSTEM_PROMPT += `\n\nINFORMACIÓN ACTUALIZADA DE INTERNET (usa esto para responder sobre actualidad):\n${searchData.answer}`;
+        }
+      } catch (err) {
+        console.error('Error Tavily (ambas keys fallaron):', err);
+      }
     }
 
     const hasImages = messages.some(m => Array.isArray(m.content) && m.content.some(b => b.type === 'image_url' || b.type === 'image'));
-
+    
     const normalizedMessages = messages.map(m => {
       if (!Array.isArray(m.content)) return m;
       const blocks = m.content.map(b => {
@@ -82,55 +123,47 @@ Si no hay instrucción, describe lo que ves de forma clara y útil`;
 
     const model = hasImages ? 'pixtral-12b-2409' : 'mistral-small-latest';
 
-    const apiResponse = await fetch('https://api.mistral.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...normalizedMessages],
-        max_tokens: 1024,
-        temperature: 0.7
-      })
-    });
-
-    if (!apiResponse.ok) {
-      const errorData = await apiResponse.json();
-      return res.status(apiResponse.status).json({ error: 'Error de la API de Mistral', details: errorData });
+    // Función para llamar a Mistral con una key específica
+    async function llamarMistral(key) {
+      const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...normalizedMessages],
+          max_tokens: 1024,
+          temperature: 0.7
+        })
+      });
+      if (!response.ok) throw new Error(`Mistral status ${response.status}`);
+      return await response.json();
     }
 
-    const data = await apiResponse.json();
+    let data = null;
+
+    // Intentar con key principal
+    if (apiKey) {
+      try {
+        data = await llamarMistral(apiKey);
+      } catch (err) {
+        console.error('Mistral key 1 falló, intentando key 2:', err.message);
+      }
+    }
+
+    // Si falló, usar key de respaldo
+    if (!data && apiKey2) {
+      try {
+        data = await llamarMistral(apiKey2);
+      } catch (err) {
+        console.error('Mistral key 2 también falló:', err.message);
+        return res.status(500).json({ error: 'Ambas keys de Mistral fallaron', details: err.message });
+      }
+    }
+
+    if (!data) return res.status(500).json({ error: 'No hay keys de Mistral disponibles' });
+
     return res.status(200).json(data);
   } catch (error) {
-    return res.status(500).json({ error: 'Error en el proxy', details: error.message });
-  }
-}
-
-function detectarBusqueda(texto) {
-  if (!texto) return false;
-  const lower = texto.toLowerCase();
-  const palabrasClave = ['hoy', 'ayer', 'ahora', 'actualmente', 'últimas noticias', 'ultimas noticias', 'reciente', 'recientes', '2026', '2025', 'qué pasó', 'que paso', 'qué pasa', 'que pasa', 'novedades', 'actualidad', 'último', 'ultimo', 'en vivo', 'precio', 'cotización', 'clima', 'tiempo hoy', 'deportes hoy', 'elecciones', 'resultado'];
-  const esPregunta = lower.includes('?') || lower.startsWith('qué') || lower.startsWith('que') || lower.startsWith('cuál') || lower.startsWith('cual') || lower.startsWith('cómo') || lower.startsWith('como');
-  return palabrasClave.some(p => lower.includes(p)) || (esPregunta && lower.length > 20);
-}
-
-async function buscarActualidad(pregunta, tavilyKey) {
-  try {
-    const response = await fetch('https://api.tavily.com/search', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ api_key: tavilyKey, query: pregunta, search_depth: 'basic', max_results: 3, include_answer: true, days: 3 })
-    });
-    if (!response.ok) return '';
-    const data = await response.json();
-    let contexto = '';
-    if (data.answer) contexto += `Resumen actual: ${data.answer}\n\n`;
-    if (data.results && data.results.length > 0) {
-      contexto += 'Fuentes recientes:\n';
-      data.results.forEach((r, i) => { contexto += `${i + 1}. ${r.title}: ${r.content}\n`; });
-    }
-    return contexto;
-  } catch (e) {
-    console.error('Error en Tavily:', e);
-    return '';
+    return res.status(500).json({ error: 'Error proxy', details: error.message });
   }
 }
