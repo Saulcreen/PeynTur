@@ -1115,7 +1115,7 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
 
     try {
       // Todo pasa por el proxy de Vercel (Mistral small o Pixtral según haya imágenes)
-      const res = await fetch('https://peyn-tur-xhuk.vercel.app/api/chat', {
+      const res = await fetch('https://peyn-tur-6y2x.vercel.app/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages })
@@ -1154,7 +1154,7 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
     let title = messages[0]?.content?.slice(0, 44) || 'Chat';
 
     try {
-      const res = await fetch('https://peyn-tur-xhuk.vercel.app/api/chat', {
+      const res = await fetch('https://peyn-tur-6y2x.vercel.app/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: [{ role: 'user', content: titlePrompt }] })
