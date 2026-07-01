@@ -10,9 +10,6 @@ export default async function handler(req, res) {
     const apiKey = process.env.API_KEY_IA;
     const tavilyKey = process.env.TAVILY_API_KEY;
 
-    // ==========================================
-    // 1. PROMPT BASE DE PEYNTUR
-    // ==========================================
     let SYSTEM_PROMPT = `Eres PeynTur, un asistente de inteligencia artificial creado para ayudar a las personas de forma clara, honesta y con buen humor.
 PERSONALIDAD:
 Tono amable, directo y con toque de humor natural
@@ -57,17 +54,8 @@ Si contiene texto, léelo y transcríbelo fielmente
 Si hace una pregunta sobre la imagen, respóndela con detalle
 Si no hay instrucción, describe lo que ves de forma clara y útil`;
 
-    // ==========================================
-    // 2. LÓGICA DE BÚSQUEDA WEB (TAVILY)
-    // ==========================================
-    
-    // Obtener el último mensaje del usuario
     const ultimoMensajeUsuario = [...messages].reverse().find(m => m.role === 'user');
-    const textoUsuario = typeof ultimoMensajeUsuario?.content === 'string' 
-      ? ultimoMensajeUsuario.content 
-      : '';
-
-    // Detectar si necesita búsqueda en internet
+    const textoUsuario = typeof ultimoMensajeUsuario?.content === 'string' ? ultimoMensajeUsuario.content : '';
     const necesitaBusqueda = detectarBusqueda(textoUsuario);
     let contextoActualidad = '';
 
@@ -75,51 +63,31 @@ Si no hay instrucción, describe lo que ves de forma clara y útil`;
       contextoActualidad = await buscarActualidad(textoUsuario, tavilyKey);
     }
 
-    // Inyectar el contexto en el System Prompt si hay resultados
     if (contextoActualidad) {
-      SYSTEM_PROMPT += `\n\nINFORMACIÓN ACTUALIZADA (usa esto para responder preguntas sobre actualidad, noticias o eventos recientes):\n${contextoActualidad}\n\nINSTRUCCIÓN: Si el usuario pregunta sobre algo reciente, basa tu respuesta EXCLUSIVAMENTE en la información actualizada de arriba. Si la información no responde su pregunta, admítelo con honestidad.`;
+      SYSTEM_PROMPT += `\n\nINFORMACIÓN ACTUALIZADA (usa esto para responder preguntas sobre actualidad, noticias o eventos recientes):\n${contextoActualidad}\n\nINSTRUCCIÓN: Si el usuario pregunta sobre algo reciente, basa tu respuesta EXCLUSIVAMENTE en la información actualizada de arriba.`;
     }
 
-    // ==========================================
-    // 3. PROCESAMIENTO DE IMÁGENES Y LLAMADA A MISTRAL
-    // ==========================================
-    
-    // Detectar si algún mensaje tiene contenido multimodal (imagen)
-    const hasImages = messages.some(m =>
-      Array.isArray(m.content) && m.content.some(b => b.type === 'image_url' || b.type === 'image')
-    );
+    const hasImages = messages.some(m => Array.isArray(m.content) && m.content.some(b => b.type === 'image_url' || b.type === 'image'));
 
-    // Convertir bloques de imagen al formato image_url de Mistral
     const normalizedMessages = messages.map(m => {
       if (!Array.isArray(m.content)) return m;
       const blocks = m.content.map(b => {
         if (b.type === 'image') {
-          // Formato Anthropic → formato Mistral image_url
-          return {
-            type: 'image_url',
-            image_url: `data:${b.source.media_type};base64,${b.source.data}`
-          };
+          return { type: 'image_url', image_url: `data:${b.source.media_type};base64,${b.source.data}` };
         }
-        return b; // text blocks pass through
+        return b;
       });
       return { role: m.role, content: blocks };
     });
 
-    // Usar pixtral para visión, mistral-small para texto
     const model = hasImages ? 'pixtral-12b-2409' : 'mistral-small-latest';
 
     const apiResponse = await fetch('https://api.mistral.ai/v1/chat/completions', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
       body: JSON.stringify({
         model,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          ...normalizedMessages
-        ],
+        messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...normalizedMessages],
         max_tokens: 1024,
         temperature: 0.7
       })
@@ -132,71 +100,33 @@ Si no hay instrucción, describe lo que ves de forma clara y útil`;
 
     const data = await apiResponse.json();
     return res.status(200).json(data);
-
   } catch (error) {
     return res.status(500).json({ error: 'Error en el proxy', details: error.message });
   }
 }
 
-// ==========================================
-// FUNCIONES AUXILIARES
-// ==========================================
-
-/**
- * Detecta si el mensaje del usuario requiere información actualizada.
- */
 function detectarBusqueda(texto) {
   if (!texto) return false;
   const lower = texto.toLowerCase();
-  
-  const palabrasClave = [
-    'hoy', 'ayer', 'ahora', 'actualmente', 'últimas noticias',
-    'ultimas noticias', 'reciente', 'recientes', '2026', '2025',
-    'qué pasó', 'que paso', 'qué pasa', 'que pasa', 'novedades',
-    'actualidad', 'último', 'ultimo', 'en vivo', 'precio', 'cotización',
-    'clima', 'tiempo hoy', 'deportes hoy', 'elecciones', 'resultado'
-  ];
-  
-  const esPregunta = lower.includes('?') || lower.startsWith('qué') || 
-                     lower.startsWith('que') || lower.startsWith('cuál') || 
-                     lower.startsWith('cual') || lower.startsWith('cómo') ||
-                     lower.startsWith('como');
-  
-  return palabrasClave.some(p => lower.includes(p)) || 
-         (esPregunta && lower.length > 20);
+  const palabrasClave = ['hoy', 'ayer', 'ahora', 'actualmente', 'últimas noticias', 'ultimas noticias', 'reciente', 'recientes', '2026', '2025', 'qué pasó', 'que paso', 'qué pasa', 'que pasa', 'novedades', 'actualidad', 'último', 'ultimo', 'en vivo', 'precio', 'cotización', 'clima', 'tiempo hoy', 'deportes hoy', 'elecciones', 'resultado'];
+  const esPregunta = lower.includes('?') || lower.startsWith('qué') || lower.startsWith('que') || lower.startsWith('cuál') || lower.startsWith('cual') || lower.startsWith('cómo') || lower.startsWith('como');
+  return palabrasClave.some(p => lower.includes(p)) || (esPregunta && lower.length > 20);
 }
 
-/**
- * Llama a Tavily API para obtener contexto actual.
- */
 async function buscarActualidad(pregunta, tavilyKey) {
   try {
     const response = await fetch('https://api.tavily.com/search', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        api_key: tavilyKey,
-        query: pregunta,
-        search_depth: 'basic',
-        max_results: 3,
-        include_answer: true,
-        days: 3
-      })
+      body: JSON.stringify({ api_key: tavilyKey, query: pregunta, search_depth: 'basic', max_results: 3, include_answer: true, days: 3 })
     });
-
     if (!response.ok) return '';
-    
     const data = await response.json();
-    
     let contexto = '';
-    if (data.answer) {
-      contexto += `Resumen actual: ${data.answer}\n\n`;
-    }
+    if (data.answer) contexto += `Resumen actual: ${data.answer}\n\n`;
     if (data.results && data.results.length > 0) {
       contexto += 'Fuentes recientes:\n';
-      data.results.forEach((r, i) => {
-        contexto += `${i + 1}. ${r.title}: ${r.content}\n`;
-      });
+      data.results.forEach((r, i) => { contexto += `${i + 1}. ${r.title}: ${r.content}\n`; });
     }
     return contexto;
   } catch (e) {
