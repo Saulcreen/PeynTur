@@ -7,12 +7,26 @@ export default async function handler(req, res) {
 
   try {
     const { messages } = req.body;
-    const apiKey = process.env.API_KEY_IA;
-    const apiKey2 = process.env.API_KEY_IA_2;
-    const tavilyKey = process.env.TAVILY_API_KEY;
+
+    // Fecha y hora actual (Lima, Perú)
+    const ahora = new Date();
+    const fechaHoy = ahora.toLocaleDateString('es-PE', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+      timeZone: 'America/Lima'
+    });
+    const horaHoy = ahora.toLocaleTimeString('es-PE', {
+      hour: '2-digit', minute: '2-digit', timeZone: 'America/Lima'
+    });
+
+    // Keys con doble respaldo
+    const apiKey    = process.env.API_KEY_IA;
+    const apiKey2   = process.env.API_KEY_IA_2;
+    const tavilyKey  = process.env.TAVILY_API_KEY;
     const tavilyKey2 = process.env.TAVILY_API_KEY_2;
 
-    let SYSTEM_PROMPT = `Eres PeynTur, un asistente de inteligencia artificial creado para ayudar a las personas de forma clara, honesta y con buen humor.
+    let SYSTEM_PROMPT = `FECHA Y HORA ACTUAL: ${fechaHoy}, ${horaHoy} (hora de Lima, Perú). Usa esto siempre que el usuario pregunte por fechas, estrenos, eventos próximos o cualquier referencia temporal. Nunca inventes fechas.
+
+Eres PeynTur, un asistente de inteligencia artificial creado para ayudar a las personas de forma clara, honesta y con buen humor.
 PERSONALIDAD:
 Tono amable, directo y con toque de humor natural
 Idioma principal: español (pero te adaptas al idioma del usuario)
@@ -56,14 +70,21 @@ Si contiene texto, léelo y transcríbelo fielmente
 Si hace una pregunta sobre la imagen, respóndela con detalle
 Si no hay instrucción, describe lo que ves de forma clara y útil`;
 
-    // Obtener último mensaje del usuario
+    // Último mensaje del usuario
     const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
     const userText = typeof lastUserMsg?.content === 'string' ? lastUserMsg.content.toLowerCase() : '';
 
-    // Detectar si necesita búsqueda de actualidad
-    const necesitaBusqueda = ['hoy', 'ayer', 'ahora', 'actual', 'reciente', '2026', '2025', 'último', 'ultimo', 'novedad', 'noticia', 'próximo', 'proximo', 'película', 'pelicula', 'estrenar', 'estreno', 'salir', 'champions', 'partido', 'resultado'].some(p => userText.includes(p));
+    // Palabras clave que activan búsqueda de actualidad
+    const necesitaBusqueda = [
+      'hoy', 'ayer', 'ahora', 'actual', 'reciente',
+      '2025', '2026', 'último', 'ultimo', 'novedad', 'noticia',
+      'próximo', 'proximo', 'película', 'pelicula', 'estrenar',
+      'estreno', 'salir', 'champions', 'partido', 'resultado',
+      'cuando sale', 'cuando estrena', 'fecha de', 'lanzamiento',
+      'serie', 'temporada', 'precio', 'clima', 'ganó', 'gano'
+    ].some(p => userText.includes(p));
 
-    // Función para buscar con Tavily usando una key específica
+    // Función para buscar con Tavily
     async function buscarConTavily(key) {
       const searchRes = await fetch('https://api.tavily.com/search', {
         method: 'POST',
@@ -81,12 +102,11 @@ Si no hay instrucción, describe lo que ves de forma clara y útil`;
       return await searchRes.json();
     }
 
-    // Búsqueda con Tavily (doble key con fallback automático)
+    // Búsqueda con doble key y fallback automático
     if (necesitaBusqueda && (tavilyKey || tavilyKey2)) {
       try {
         let searchData = null;
 
-        // Intentar con la key principal
         if (tavilyKey) {
           try {
             searchData = await buscarConTavily(tavilyKey);
@@ -95,7 +115,6 @@ Si no hay instrucción, describe lo que ves de forma clara y útil`;
           }
         }
 
-        // Si la principal falló, usar la segunda
         if (!searchData && tavilyKey2) {
           searchData = await buscarConTavily(tavilyKey2);
         }
@@ -109,7 +128,7 @@ Si no hay instrucción, describe lo que ves de forma clara y útil`;
     }
 
     const hasImages = messages.some(m => Array.isArray(m.content) && m.content.some(b => b.type === 'image_url' || b.type === 'image'));
-    
+
     const normalizedMessages = messages.map(m => {
       if (!Array.isArray(m.content)) return m;
       const blocks = m.content.map(b => {
@@ -123,7 +142,7 @@ Si no hay instrucción, describe lo que ves de forma clara y útil`;
 
     const model = hasImages ? 'pixtral-12b-2409' : 'mistral-small-latest';
 
-    // Función para llamar a Mistral con una key específica
+    // Función para llamar a Mistral
     async function llamarMistral(key) {
       const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
         method: 'POST',
@@ -139,9 +158,9 @@ Si no hay instrucción, describe lo que ves de forma clara y útil`;
       return await response.json();
     }
 
+    // Llamada a Mistral con doble key y fallback automático
     let data = null;
 
-    // Intentar con key principal
     if (apiKey) {
       try {
         data = await llamarMistral(apiKey);
@@ -150,7 +169,6 @@ Si no hay instrucción, describe lo que ves de forma clara y útil`;
       }
     }
 
-    // Si falló, usar key de respaldo
     if (!data && apiKey2) {
       try {
         data = await llamarMistral(apiKey2);
@@ -163,6 +181,7 @@ Si no hay instrucción, describe lo que ves de forma clara y útil`;
     if (!data) return res.status(500).json({ error: 'No hay keys de Mistral disponibles' });
 
     return res.status(200).json(data);
+
   } catch (error) {
     return res.status(500).json({ error: 'Error proxy', details: error.message });
   }
