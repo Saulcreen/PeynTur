@@ -538,6 +538,9 @@
     .msg-act-btn { font-size: 1rem; padding: 4px 8px; }
   }
 </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
 </head>
 <body id="body">
 
@@ -976,17 +979,50 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
     await callAPI(first);
   }
 
-  /* ─── MARKDOWN ─── */
+  /* ─── MARKDOWN + LATEX ─── */
   function renderMarkdown(text) {
-    let s = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const latexBlocks = [];
+    let s = text;
+
+    // Extraer LaTeX antes de escapar HTML
+    s = s.replace(/\$\$([\s\S]+?)\$\$/g, (_, math) => {
+      latexBlocks.push({ type: 'display', math }); return '%%LATEX' + (latexBlocks.length-1) + '%%';
+    });
+    s = s.replace(/\\\[([\s\S]+?)\\\]/g, (_, math) => {
+      latexBlocks.push({ type: 'display', math }); return '%%LATEX' + (latexBlocks.length-1) + '%%';
+    });
+    s = s.replace(/\$([^$\n]+?)\$/g, (_, math) => {
+      latexBlocks.push({ type: 'inline', math }); return '%%LATEX' + (latexBlocks.length-1) + '%%';
+    });
+    s = s.replace(/\\\(([\s\S]+?)\\\)/g, (_, math) => {
+      latexBlocks.push({ type: 'inline', math }); return '%%LATEX' + (latexBlocks.length-1) + '%%';
+    });
+
+    // Escapar HTML
+    s = s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+    // Markdown
     s = s.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
     s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
     s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     s = s.replace(/__(.+?)__/g, '<strong>$1</strong>');
-    // * texto * (asterisco simple) → negrita
     s = s.replace(/\*([^*\n<]+)\*/g, '<strong>$1</strong>');
     s = s.replace(/_([^_\n]+)_/g, '<em>$1</em>');
     s = s.replace(/\n/g, '<br>');
+
+    // Restaurar LaTeX renderizado
+    s = s.replace(/%%LATEX(\d+)%%/g, (_, i) => {
+      const block = latexBlocks[parseInt(i)];
+      try {
+        return katex.renderToString(block.math.trim(), {
+          displayMode: block.type === 'display',
+          throwOnError: false
+        });
+      } catch(e) {
+        return block.type === 'display' ? '$$' + block.math + '$$' : '$' + block.math + '$';
+      }
+    });
+
     return s;
   }
 
