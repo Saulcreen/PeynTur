@@ -142,7 +142,15 @@
   .history-item:hover { background: var(--copper-dim); color: var(--text); }
 
   /* ── MENÚ DE OPCIONES DEL CHAT (tres puntos) ── */
-  .history-item-row { position: relative; }
+  .history-item-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    border-radius: 7px;
+    transition: background 0.15s;
+  }
+  .history-item-row:hover { background: var(--copper-dim); }
   .history-kebab-btn {
     background: none;
     border: none;
