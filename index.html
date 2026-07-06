@@ -141,6 +141,62 @@
   }
   .history-item:hover { background: var(--copper-dim); color: var(--text); }
 
+  /* ── MENÚ DE OPCIONES DEL CHAT (tres puntos) ── */
+  .history-item-row { position: relative; }
+  .history-kebab-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 6px;
+    color: var(--text-dim);
+    flex-shrink: 0;
+    border-radius: 5px;
+    opacity: 0;
+    transition: opacity 0.12s, background 0.12s, color 0.12s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .history-item-row:hover .history-kebab-btn,
+  .history-kebab-btn.active { opacity: 1; }
+  .history-kebab-btn:hover,
+  .history-kebab-btn.active { background: var(--copper-dim); color: var(--text); }
+  .history-kebab-btn svg { width: 15px; height: 15px; }
+
+  .history-menu {
+    position: fixed;
+    min-width: 190px;
+    background: var(--sidebar);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+    padding: 5px;
+    z-index: 400;
+    display: none;
+    flex-direction: column;
+  }
+  .history-menu.open { display: flex; }
+  .history-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 9px;
+    border-radius: 7px;
+    font-size: 0.8rem;
+    color: var(--text);
+    cursor: pointer;
+    background: none;
+    border: none;
+    text-align: left;
+    width: 100%;
+    font-family: inherit;
+  }
+  .history-menu-item:hover { background: var(--copper-dim); }
+  .history-menu-item svg { width: 15px; height: 15px; flex-shrink: 0; opacity: 0.85; }
+  .history-menu-item.danger { color: #e06060; }
+  .history-menu-item.danger:hover { background: rgba(224,96,96,0.12); }
+  .history-menu-divider { height: 1px; background: var(--divider); margin: 4px 2px; }
+
   /* ── THEME ROW ── */
   .theme-row {
     display: flex;
@@ -582,6 +638,7 @@
   </svg>
 </button>
 <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+<div class="history-menu" id="history-menu"></div>
 
 <!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar">
@@ -818,17 +875,137 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
     renderHistory(filtered, true);
   }
 
+  function getHistoryMenuHTML(idx, entry) {
+    return '' +
+      '<button class="history-menu-item" onclick="shareChatFromMenu(' + idx + ')">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.6" y1="10.6" x2="15.4" y2="6.4"/><line x1="8.6" y1="13.4" x2="15.4" y2="17.6"/></svg>' +
+        'Compartir la conversación' +
+      '</button>' +
+      '<button class="history-menu-item" onclick="togglePinChat(' + idx + ');closeHistoryMenu()">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14l-1.4-1.4A4 4 0 0 1 16.4 13V7a1 1 0 0 1 1-1V4H6.6v2a1 1 0 0 1 1 1v6a4 4 0 0 1-1.2 2.6z"/></svg>' +
+        (entry.pinned ? 'Desfijar' : 'Fijar') +
+      '</button>' +
+      '<button class="history-menu-item" onclick="renameChatFromMenu(' + idx + ')">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>' +
+        'Cambiar nombre' +
+      '</button>' +
+      '<div class="history-menu-divider"></div>' +
+      '<button class="history-menu-item danger" onclick="deleteChatFromMenu(' + idx + ')">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>' +
+        'Borrar' +
+      '</button>';
+  }
+
   function renderHistory(items, isFiltered) {
     // Pinned first, then rest
     const sorted = [...items].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
     document.getElementById('history-list').innerHTML = sorted.map(h => {
       const realIdx = historyItems.indexOf(h);
       const pinnedIcon = h.pinned ? '📌 ' : '';
-      return `<div class="history-item-row" style="display:flex;align-items:center;gap:2px;border-radius:7px;transition:background 0.15s;" onmouseover="this.style.background='var(--copper-dim)'" onmouseout="this.style.background='none'">
+      return `<div class="history-item-row">
         <div class="history-item" style="flex:1;border-radius:7px;background:none;" onclick="loadChat(${realIdx})" title="${esc(h.title)}">${pinnedIcon}${esc(h.title)}</div>
-        <button onclick="togglePinChat(${realIdx})" title="${h.pinned ? 'Desfijar' : 'Fijar'}" style="background:none;border:none;cursor:pointer;padding:4px 5px;color:${h.pinned ? 'var(--copper)' : 'var(--text-dim)'};font-size:0.75rem;flex-shrink:0;opacity:0.8;border-radius:5px;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.8'">📌</button>
+        <button class="history-kebab-btn" onclick="event.stopPropagation();toggleHistoryMenu(event, ${realIdx})" title="Más opciones">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.5" fill="currentColor" stroke="none"/></svg>
+        </button>
       </div>`;
     }).join('');
+  }
+
+  /* ─── MENÚ CONTEXTUAL DEL CHAT (tres puntos) ─── */
+  function toggleHistoryMenu(evt, idx) {
+    const menu = document.getElementById('history-menu');
+    const btn = evt.currentTarget;
+    const wasOpenForThis = menu.classList.contains('open') && menu.dataset.idx == idx;
+
+    closeHistoryMenu();
+    if (wasOpenForThis) return;
+
+    const entry = historyItems[idx];
+    if (!entry) return;
+
+    menu.dataset.idx = idx;
+    menu.innerHTML = getHistoryMenuHTML(idx, entry);
+
+    const rect = btn.getBoundingClientRect();
+    menu.classList.add('open');
+    const menuHeight = menu.offsetHeight;
+    const menuWidth = menu.offsetWidth;
+    let top = rect.bottom + 4;
+    let left = rect.right - menuWidth;
+    if (top + menuHeight > window.innerHeight) top = rect.top - menuHeight - 4;
+    if (left < 4) left = 4;
+    menu.style.top = top + 'px';
+    menu.style.left = left + 'px';
+
+    btn.classList.add('active');
+  }
+
+  function closeHistoryMenu() {
+    const menu = document.getElementById('history-menu');
+    menu.classList.remove('open');
+    delete menu.dataset.idx;
+    document.querySelectorAll('.history-kebab-btn.active').forEach(b => b.classList.remove('active'));
+  }
+
+  document.addEventListener('click', function(e) {
+    const menu = document.getElementById('history-menu');
+    if (!menu) return;
+    if (menu.classList.contains('open') && !menu.contains(e.target) && !e.target.closest('.history-kebab-btn')) {
+      closeHistoryMenu();
+    }
+  });
+
+  function shareChatFromMenu(idx) {
+    closeHistoryMenu();
+    const entry = historyItems[idx];
+    if (!entry) return;
+    const text = entry.messages.map(function(m) {
+      const who = m.role === 'user' ? 'Tú' : 'PeynTur';
+      const content = Array.isArray(m.content)
+        ? m.content.map(function(b) { return b.text || '[imagen]'; }).join(' ')
+        : m.content;
+      return who + ': ' + content;
+    }).join('\n\n');
+
+    if (navigator.share) {
+      navigator.share({ title: entry.title, text: text }).catch(function(){});
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(text)
+        .then(function() { alert('Conversación copiada al portapapeles.'); })
+        .catch(function() { alert('No se pudo compartir la conversación.'); });
+    } else {
+      alert('Compartir no está disponible en este navegador.');
+    }
+  }
+
+  function renameChatFromMenu(idx) {
+    closeHistoryMenu();
+    const entry = historyItems[idx];
+    if (!entry) return;
+    const nuevo = prompt('Nuevo nombre para el chat:', entry.title);
+    if (nuevo === null) return;
+    const trimmed = nuevo.trim();
+    if (!trimmed) return;
+    entry.title = trimmed;
+    if (currentChatIdx === idx) {
+      document.getElementById('chat-header-title').textContent = trimmed;
+    }
+    renderHistory(historyItems);
+    saveHistory();
+  }
+
+  function deleteChatFromMenu(idx) {
+    closeHistoryMenu();
+    if (idx < 0 || idx >= historyItems.length) return;
+    if (!confirm('¿Borrar este chat? No se puede deshacer.')) return;
+    historyItems.splice(idx, 1);
+    renderHistory(historyItems);
+    saveHistory();
+    if (currentChatIdx === idx) {
+      newChat();
+    } else if (currentChatIdx > idx) {
+      currentChatIdx--;
+    }
   }
 
   /* ─── FIJAR CHAT ─── */
