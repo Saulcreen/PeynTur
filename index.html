@@ -537,7 +537,37 @@
     /* Bigger tap targets */
     .msg-act-btn { font-size: 1rem; padding: 4px 8px; }
   }
-</style>
+
+  /* ─── TABLAS MARKDOWN ─── */
+  .md-table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0.8rem 0;
+    font-size: 0.85rem;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .md-table th, .md-table td {
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  .md-table th {
+    background: var(--accent);
+    color: var(--text);
+    font-weight: 600;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .md-table tr:nth-child(even) td {
+    background: rgba(255,255,255,0.03);
+  }
+  .md-table tr:hover td {
+    background: rgba(255,255,255,0.06);
+  }
+  </style>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
@@ -1000,6 +1030,56 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
 
     // Escapar HTML
     s = s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+    // Tablas markdown
+    const lines = s.split('\n');
+    let tableBuffer = [];
+    let inTable = false;
+    const processedLines = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const isTableRow = /^\s*\|/.test(line) && /\|\s*$/.test(line);
+      const isSeparator = /^\s*\|[-|:\s]+\|\s*$/.test(line);
+
+      if (isTableRow && !isSeparator) {
+        inTable = true;
+        tableBuffer.push(line);
+      } else if (isSeparator && inTable) {
+        tableBuffer.push('__SEP__');
+      } else {
+        if (inTable && tableBuffer.length > 0) {
+          // Construir tabla HTML
+          let tableHtml = '<table class="md-table">';
+          let headerDone = false;
+          for (const tline of tableBuffer) {
+            if (tline === '__SEP__') { headerDone = true; continue; }
+            const cells = tline.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|');
+            const tag = !headerDone ? 'th' : 'td';
+            tableHtml += '<tr>' + cells.map(c => `<${tag}>${c.trim()}</${tag}>`).join('') + '</tr>';
+          }
+          tableHtml += '</table>';
+          processedLines.push(tableHtml);
+          tableBuffer = [];
+          inTable = false;
+        }
+        processedLines.push(line);
+      }
+    }
+    // Flush tabla pendiente
+    if (inTable && tableBuffer.length > 0) {
+      let tableHtml = '<table class="md-table">';
+      let headerDone = false;
+      for (const tline of tableBuffer) {
+        if (tline === '__SEP__') { headerDone = true; continue; }
+        const cells = tline.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|');
+        const tag = !headerDone ? 'th' : 'td';
+        tableHtml += '<tr>' + cells.map(c => `<${tag}>${c.trim()}</${tag}>`).join('') + '</tr>';
+      }
+      tableHtml += '</table>';
+      processedLines.push(tableHtml);
+    }
+    s = processedLines.join('\n');
 
     // Markdown
     s = s.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
