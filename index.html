@@ -375,6 +375,12 @@
     transition: box-shadow 0.15s;
   }
   .edit-textarea:focus { box-shadow: 0 0 0 3px var(--copper-glow); }
+  .edit-textarea::-webkit-scrollbar { width: 6px; }
+  .edit-textarea::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+  .edit-textarea::-webkit-scrollbar-track { background: transparent; }
+  .edit-textarea::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  .edit-textarea::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+  .edit-textarea { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
   .edit-btns { display: flex; gap: 14px; margin-top: 8px; justify-content: flex-end; align-items: center; }
   .edit-cancel {
     background: none; border: none; color: var(--text-muted);
