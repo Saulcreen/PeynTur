@@ -129,21 +129,37 @@ Si no hay instrucción, describe lo que ves de forma clara y útil`;
 
     const hasImages = messages.some(m => Array.isArray(m.content) && m.content.some(b => b.type === 'image_url' || b.type === 'image'));
 
+    // Normaliza los bloques 'image' (formato tipo Anthropic que manda el frontend)
+    // al formato image_url que espera la API de Mistral, y si un mensaje trae
+    // imagen(es) sin ningún texto, agrega una instrucción explícita de OCR para
+    // que el modelo siempre sepa qué hacer con la imagen.
     const normalizedMessages = messages.map(m => {
       if (!Array.isArray(m.content)) return m;
+
       const blocks = m.content.map(b => {
         if (b.type === 'image') {
           return { type: 'image_url', image_url: `data:${b.source.media_type};base64,${b.source.data}` };
         }
         return b;
       });
+
+      const tieneImagen = blocks.some(b => b.type === 'image_url');
+      const tieneTexto = blocks.some(b => b.type === 'text' && b.text && b.text.trim());
+      if (tieneImagen && !tieneTexto) {
+        blocks.push({
+          type: 'text',
+          text: 'Lee y transcribe fielmente todo el texto que aparezca en la(s) imagen(es). Si no hay texto visible, describe la imagen con detalle.'
+        });
+      }
+
       return { role: m.role, content: blocks };
     });
 
-    // NOTA: 'pixtral-12b-2409' fue descontinuado por Mistral (deprecado 12/2025).
-    // 'pixtral-large-latest' también está deprecado. El modelo con visión vigente
-    // recomendado por Mistral es 'mistral-large-latest'.
-    const model = hasImages ? 'mistral-large-latest' : 'mistral-small-latest';
+    // Modelo con visión confirmado en la documentación oficial de Mistral
+    // (docs.mistral.ai/capabilities/vision usa "mistral-small-latest" en su
+    // propio ejemplo de envío de imágenes). pixtral-12b y pixtral-large ya
+    // están deprecados/retirados, así que no se usan.
+    const model = hasImages ? 'mistral-small-latest' : 'mistral-small-latest';
 
     // Función para llamar a Mistral
     async function llamarMistral(key) {
@@ -153,7 +169,7 @@ Si no hay instrucción, describe lo que ves de forma clara y útil`;
         body: JSON.stringify({
           model,
           messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...normalizedMessages],
-          max_tokens: 1024,
+          max_tokens: hasImages ? 2048 : 1024,
           temperature: 0.7
         })
       });
