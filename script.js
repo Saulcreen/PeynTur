@@ -334,7 +334,55 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
     chatArea.innerHTML = '';
     chatArea.classList.add('visible');
     document.getElementById('welcome').classList.add('hidden');
-    messages.forEach((m, i) => appendMessage(m.role, m.content, i));
+    
+    // Cargar mensajes correctamente extrayendo imágenes del contenido
+    messages.forEach((m, i) => {
+      let attachments = [];
+      let textContent = '';
+      
+      // Si el contenido es un array (mensaje multimodal con imágenes)
+      if (Array.isArray(m.content)) {
+        // Extraer texto e imágenes del array de contenido
+        m.content.forEach(block => {
+          if (block.type === 'text') {
+            textContent = block.text;
+          } else if (block.type === 'image' && block.source) {
+            // Reconstruir el objeto attachment desde IndexedDB
+            attachments.push({
+              type: 'image',
+              name: 'imagen-adjunta.png',
+              base64: block.source.data,
+              mimeType: block.source.media_type,
+              dataUrl: `data:${block.source.media_type};base64,${block.source.data}`,
+              size: block.source.data.length
+            });
+          } else if (block.type === 'file') {
+            attachments.push({
+              type: 'file',
+              name: block.name || 'archivo',
+              base64: block.content || block.data,
+              mimeType: block.mimeType || 'application/octet-stream',
+              dataUrl: null,
+              size: 0
+            });
+          }
+        });
+        
+        // Para mensajes del asistente, concatenar todo el texto
+        if (m.role === 'assistant' && textContent === '') {
+          textContent = m.content
+            .filter(b => b.type === 'text')
+            .map(b => b.text)
+            .join('\n');
+        }
+        
+        appendMessage(m.role, textContent, i, attachments);
+      } else {
+        // Contenido es un string simple
+        appendMessage(m.role, m.content, i);
+      }
+    });
+    
     chatArea.scrollTop = chatArea.scrollHeight;
 
     document.getElementById('chat-header').style.display = 'flex';
