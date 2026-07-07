@@ -1,4 +1,15 @@
-/* ─── THEME ─── */
+/* ─── FIX ALTURA MÓVIL (evita el "salto" al abrir el teclado) ─── */
+  function setVH() {
+    const vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', vh + 'px');
+  }
+  setVH();
+  // Solo recalculamos con resize del layout (no con cada evento del teclado,
+  // para no generar el propio salto que queremos evitar)
+  window.addEventListener('resize', setVH);
+  window.addEventListener('orientationchange', setVH);
+
+  /* ─── THEME ─── */
   function setTheme(t) {
     document.getElementById('body').className = t === 'light' ? 'light' : '';
     document.getElementById('pill-light').classList.toggle('active', t === 'light');
@@ -66,37 +77,78 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
   let pinnedMessages = [];
   let pendingAttachments = []; // [{ type:'image'|'file', name, base64, mimeType, dataUrl? }]
 
-  /* ─── PERSISTENCIA localStorage ─── */
-  const STORAGE_KEY = 'peyntur_history_v2';
+  /* ─── PERSISTENCIA (IndexedDB) ───
+     Antes usábamos localStorage, pero tiene un límite de ~5-10MB y por eso
+     las imágenes se descartaban antes de guardar ("[imagen adjunta — no guardada]").
+     IndexedDB soporta cientos de MB, así que ahora las imágenes SÍ se guardan. */
+  const STORAGE_KEY = 'peyntur_history_v2';       // clave antigua en localStorage (para migrar una sola vez)
+  const IDB_NAME = 'peyntur_db';
+  const IDB_STORE = 'kv';
+  const IDB_KEY = 'historyItems';
 
-  function saveHistory() {
+  function openDB() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(IDB_NAME, 1);
+      req.onupgradeneeded = () => {
+        if (!req.result.objectStoreNames.contains(IDB_STORE)) {
+          req.result.createObjectStore(IDB_STORE);
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function idbSet(key, value) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      tx.objectStore(IDB_STORE).put(value, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async function idbGet(key) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const req = tx.objectStore(IDB_STORE).get(key);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function saveHistory() {
     try {
       const toSave = historyItems.map(h => ({
         title: h.title,
         pinned: !!h.pinned,
-        // Strip base64 image data before saving (too large for localStorage)
-        messages: h.messages.slice(-60).map(m => {
-          if (!Array.isArray(m.content)) return m;
-          return {
-            role: m.role,
-            content: m.content.map(b => {
-              if (b.type === 'image') return { type: 'text', text: '[imagen adjunta — no guardada]' };
-              return b;
-            })
-          };
-        })
+        messages: h.messages.slice(-60) // ya no se despojan las imágenes
       }));
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+      await idbSet(IDB_KEY, toSave);
     } catch(e) { console.warn('No se pudo guardar historial:', e); }
   }
 
-  function loadHistory() {
+  async function loadHistory() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        historyItems = parsed.map(h => ({
+      let data = await idbGet(IDB_KEY);
+
+      // Migración única desde el localStorage viejo (solo texto, sin imágenes:
+      // esas ya se habían perdido antes, pero al menos rescatamos los chats)
+      if (!data) {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            data = parsed;
+            await idbSet(IDB_KEY, data);
+          }
+        }
+      }
+
+      if (Array.isArray(data)) {
+        historyItems = data.map(h => ({
           title: h.title || 'Chat',
           pinned: !!h.pinned,
           messages: Array.isArray(h.messages) ? h.messages : []
@@ -105,7 +157,6 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
       }
     } catch(e) { console.warn('No se pudo cargar historial:', e); }
   }
-
 
   // Cargar historial guardado al iniciar
   loadHistory();
@@ -537,6 +588,27 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
 
     const first = isNewChat;
     if (isNewChat) isNewChat = false;
+
+    // Guardamos el mensaje del usuario YA, sin esperar la respuesta de la IA.
+    // Así, si refrescas o se corta la conexión mientras "escribe...", no se pierde.
+    if (first) {
+      // Chat nuevo: creamos la entrada en el historial de inmediato con un título
+      // provisional (el texto del primer mensaje). generateTitle() lo reemplazará
+      // después por el título generado por la IA.
+      const provisionalTitle = (typeof text === 'string' && text.trim())
+        ? text.trim().slice(0, 44)
+        : 'Chat';
+      const entry = { title: provisionalTitle, messages: [...messages], pinned: false };
+      historyItems.unshift(entry);
+      if (historyItems.length > 20) historyItems.pop();
+      currentChatIdx = 0;
+      renderHistory(historyItems);
+      saveHistory();
+    } else if (currentChatIdx >= 0 && historyItems[currentChatIdx]) {
+      historyItems[currentChatIdx].messages = [...messages];
+      saveHistory();
+    }
+
     await callAPI(first);
   }
 
@@ -971,10 +1043,17 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
       }
     } catch (_) {}
 
-    const entry = { title, messages: [...messages], pinned: false };
-    historyItems.unshift(entry);
-    if (historyItems.length > 20) historyItems.pop();
-    currentChatIdx = 0;
+    // La entrada ya fue creada en sendMessage() antes de llamar a la API
+    // (con un título provisional). Aquí solo actualizamos el título y los mensajes.
+    if (historyItems[currentChatIdx]) {
+      historyItems[currentChatIdx].title = title;
+      historyItems[currentChatIdx].messages = [...messages];
+    } else {
+      // Fallback por si algo salió mal y la entrada no existe
+      historyItems.unshift({ title, messages: [...messages], pinned: false });
+      if (historyItems.length > 20) historyItems.pop();
+      currentChatIdx = 0;
+    }
     renderHistory(historyItems);
     saveHistory();
 
