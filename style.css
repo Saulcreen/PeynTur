@@ -559,6 +559,8 @@
     padding: 5px 0;
   }
   #msg-input::placeholder { color: var(--text-dim); }
+  #msg-input::-webkit-scrollbar { display: none; width: 0; height: 0; }
+  #msg-input { scrollbar-width: none; -ms-overflow-style: none; }
 
   .voice-btn {
     width: 34px; height: 34px;
