@@ -325,19 +325,21 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
 
   /* ─── ADJUNTOS ─── */
 
-  // Límite de tamaño de payload de la API (Anthropic/Vercel = 4.5MB). Dejamos margen.
-  const MAX_IMAGE_DIMENSION = 1568;         // lado más largo recomendado para visión
-  const MAX_IMAGE_BYTES     = 4 * 1024 * 1024; // ~4MB de margen bajo el límite real de 4.5MB
-  const MIN_JPEG_QUALITY    = 0.5;
+  // Límite de tamaño de payload de la API (Vercel = 4.5MB por request). Dejamos margen amplio
+  // porque el body también incluye el resto de la conversación y la envoltura JSON.
+  const MAX_IMAGE_DIMENSION   = 1568;              // lado más largo recomendado para visión
+  const MAX_IMAGE_BASE64_CHARS = 3 * 1024 * 1024;  // ~3MB de TEXTO base64 (esto es lo que de verdad viaja en el JSON)
+  const MIN_JPEG_QUALITY      = 0.5;
 
-  // Calcula el tamaño real en bytes que ocupará un data URL en base64.
-  function estimateBase64Bytes(dataUrl) {
-    const base64 = dataUrl.split(',')[1] || '';
-    const padding = (base64.match(/=+$/) || [''])[0].length;
-    return Math.floor(base64.length * 3 / 4) - padding;
+  // El string base64 es lo que realmente se serializa y envía en el body JSON:
+  // cada carácter ocupa 1 byte, así que dataUrl.length (menos el prefijo "data:...;base64,")
+  // es el tamaño real de red, NO los bytes decodificados de la imagen (que son ~25% menores).
+  function base64PayloadSize(dataUrl) {
+    const idx = dataUrl.indexOf(',');
+    return idx >= 0 ? dataUrl.length - idx - 1 : dataUrl.length;
   }
 
-  // Redimensiona/comprime una imagen hasta que quepa bajo MAX_IMAGE_BYTES.
+  // Redimensiona/comprime una imagen hasta que el TEXTO base64 quepa bajo MAX_IMAGE_BASE64_CHARS.
   // Devuelve { dataUrl, base64, mimeType, size }.
   function resizeImage(file) {
     return new Promise((resolve, reject) => {
@@ -359,7 +361,7 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
             // El PNG se conserva por su transparencia; el resto se convierte a JPEG (comprime mucho mejor).
             const keepPng = file.type === 'image/png';
             const outputMime = keepPng ? 'image/png' : 'image/jpeg';
-            let quality = 0.92;
+            let quality = 0.9;
 
             const renderAt = (w, h) => {
               canvas.width = w;
@@ -372,24 +374,33 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
             let dataUrl = canvas.toDataURL(outputMime, keepPng ? undefined : quality);
 
             // Si sigue pesando demasiado: primero bajamos calidad JPEG, luego dimensiones.
+            // Si el PNG no baja lo suficiente (no tiene calidad ajustable), lo convertimos a JPEG como último recurso.
             let attempts = 0;
-            while (estimateBase64Bytes(dataUrl) > MAX_IMAGE_BYTES && attempts < 8) {
+            let forcedJpeg = false;
+            while (base64PayloadSize(dataUrl) > MAX_IMAGE_BASE64_CHARS && attempts < 12) {
               attempts++;
-              if (!keepPng && quality > MIN_JPEG_QUALITY) {
-                quality = Math.max(MIN_JPEG_QUALITY, quality - 0.12);
+              if (keepPng && !forcedJpeg && attempts >= 3) {
+                // El PNG no compresible: forzamos JPEG para poder seguir bajando peso.
+                forcedJpeg = true;
+                dataUrl = canvas.toDataURL('image/jpeg', quality);
+                if (base64PayloadSize(dataUrl) <= MAX_IMAGE_BASE64_CHARS) break;
+              } else if ((!keepPng || forcedJpeg) && quality > MIN_JPEG_QUALITY) {
+                quality = Math.max(MIN_JPEG_QUALITY, quality - 0.1);
+                dataUrl = canvas.toDataURL('image/jpeg', quality);
               } else {
-                targetW = Math.max(1, Math.round(targetW * 0.8));
-                targetH = Math.max(1, Math.round(targetH * 0.8));
+                targetW = Math.max(1, Math.round(targetW * 0.75));
+                targetH = Math.max(1, Math.round(targetH * 0.75));
                 renderAt(targetW, targetH);
+                dataUrl = canvas.toDataURL(keepPng && !forcedJpeg ? outputMime : 'image/jpeg', keepPng && !forcedJpeg ? undefined : quality);
               }
-              dataUrl = canvas.toDataURL(outputMime, keepPng ? undefined : quality);
             }
 
+            const finalMime = forcedJpeg ? 'image/jpeg' : outputMime;
             resolve({
               dataUrl,
               base64: dataUrl.split(',')[1],
-              mimeType: outputMime,
-              size: estimateBase64Bytes(dataUrl)
+              mimeType: finalMime,
+              size: base64PayloadSize(dataUrl)
             });
           } catch (err) {
             reject(err);
@@ -850,6 +861,31 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
   }
 
   /* ─── API ─── */
+
+  // El array `messages` conserva TODO el historial, incluidas imágenes de turnos pasados.
+  // Si no las recortamos, el body crece con cada mensaje nuevo hasta romper el límite de 4.5MB.
+  // Aquí solo dejamos la imagen del último turno que tuvo una; las anteriores se resumen en texto.
+  function buildMessagesForRequest(msgs) {
+    let lastUserIdxWithImage = -1;
+    msgs.forEach((m, i) => {
+      if (m.role === 'user' && Array.isArray(m.content) && m.content.some(b => b.type === 'image')) {
+        lastUserIdxWithImage = i;
+      }
+    });
+    return msgs.map((m, i) => {
+      if (m.role === 'user' && Array.isArray(m.content) && i !== lastUserIdxWithImage) {
+        const hasImage = m.content.some(b => b.type === 'image');
+        if (!hasImage) return m;
+        const textBlocks = m.content.filter(b => b.type === 'text');
+        return {
+          role: 'user',
+          content: [{ type: 'text', text: '[Imagen adjunta en un mensaje anterior — omitida aquí para no exceder el límite de tamaño]' }, ...textBlocks]
+        };
+      }
+      return m;
+    });
+  }
+
   async function callAPI(isFirst) {
     const chatArea = document.getElementById('chat-area');
     const typingId = 'typing-' + Date.now();
@@ -864,10 +900,24 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
 
     try {
       // Todo pasa por el proxy de Vercel (Mistral small o Pixtral según haya imágenes)
+      const body = JSON.stringify({ messages: buildMessagesForRequest(messages) });
+
+      // Vercel corta las requests de más de ~4.5MB SIN devolver cabeceras CORS,
+      // lo cual el navegador reporta como "Failed to fetch" en lugar de un error claro.
+      // Lo detectamos antes de enviar para dar un mensaje útil.
+      const MAX_BODY_BYTES = 4.3 * 1024 * 1024; // margen bajo el límite real de 4.5MB
+      if (body.length > MAX_BODY_BYTES) {
+        throw new Error(
+          `El mensaje pesa demasiado (${(body.length / 1024 / 1024).toFixed(1)}MB) para enviarse al servidor (límite ~4.5MB). ` +
+          `Probablemente hay varias imágenes o una conversación muy larga con imágenes previas. ` +
+          `Intenta iniciar un chat nuevo o adjuntar menos imágenes a la vez.`
+        );
+      }
+
       const res = await fetch('https://peyn-tur-6y2x.vercel.app/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages })
+        body
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || data.message || `Error ${res.status}`);
@@ -885,7 +935,10 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
       }
     } catch (err) {
       document.getElementById(typingId)?.remove();
-      appendMessage('assistant', `Error al conectar con el servidor: ${err.message}`);
+      const msg = err.message === 'Failed to fetch'
+        ? 'No se pudo conectar con el servidor. Si acabas de enviar una imagen grande, probablemente el archivo superó el límite de tamaño permitido; intenta con una imagen más pequeña o comprimida.'
+        : err.message;
+      appendMessage('assistant', `Error al conectar con el servidor: ${msg}`);
     }
 
     isLoading = false;
