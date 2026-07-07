@@ -324,27 +324,124 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
   }
 
   /* ─── ADJUNTOS ─── */
-  function handleFileSelect(e) {
-    const files = [...e.target.files];
-    e.target.value = ''; // reset so same file can be re-selected
-    files.forEach(file => {
+
+  // Límite de tamaño de payload de la API (Anthropic/Vercel = 4.5MB). Dejamos margen.
+  const MAX_IMAGE_DIMENSION = 1568;         // lado más largo recomendado para visión
+  const MAX_IMAGE_BYTES     = 4 * 1024 * 1024; // ~4MB de margen bajo el límite real de 4.5MB
+  const MIN_JPEG_QUALITY    = 0.5;
+
+  // Calcula el tamaño real en bytes que ocupará un data URL en base64.
+  function estimateBase64Bytes(dataUrl) {
+    const base64 = dataUrl.split(',')[1] || '';
+    const padding = (base64.match(/=+$/) || [''])[0].length;
+    return Math.floor(base64.length * 3 / 4) - padding;
+  }
+
+  // Redimensiona/comprime una imagen hasta que quepa bajo MAX_IMAGE_BYTES.
+  // Devuelve { dataUrl, base64, mimeType, size }.
+  function resizeImage(file) {
+    return new Promise((resolve, reject) => {
       const reader = new FileReader();
+      reader.onerror = () => reject(reader.error || new Error('Error leyendo el archivo'));
       reader.onload = ev => {
-        const dataUrl = ev.target.result;
-        const base64 = dataUrl.split(',')[1];
-        const isImage = file.type.startsWith('image/');
-        pendingAttachments.push({
-          type: isImage ? 'image' : 'file',
-          name: file.name,
-          base64,
-          mimeType: file.type || 'application/octet-stream',
-          dataUrl: isImage ? dataUrl : null,
-          size: file.size
-        });
-        renderAttachmentsPreview();
+        const img = new Image();
+        img.onerror = () => reject(new Error('No se pudo procesar la imagen'));
+        img.onload = () => {
+          try {
+            let targetW = img.naturalWidth;
+            let targetH = img.naturalHeight;
+            const scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(targetW, targetH));
+            targetW = Math.max(1, Math.round(targetW * scale));
+            targetH = Math.max(1, Math.round(targetH * scale));
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            // El PNG se conserva por su transparencia; el resto se convierte a JPEG (comprime mucho mejor).
+            const keepPng = file.type === 'image/png';
+            const outputMime = keepPng ? 'image/png' : 'image/jpeg';
+            let quality = 0.92;
+
+            const renderAt = (w, h) => {
+              canvas.width = w;
+              canvas.height = h;
+              ctx.clearRect(0, 0, w, h);
+              ctx.drawImage(img, 0, 0, w, h);
+            };
+
+            renderAt(targetW, targetH);
+            let dataUrl = canvas.toDataURL(outputMime, keepPng ? undefined : quality);
+
+            // Si sigue pesando demasiado: primero bajamos calidad JPEG, luego dimensiones.
+            let attempts = 0;
+            while (estimateBase64Bytes(dataUrl) > MAX_IMAGE_BYTES && attempts < 8) {
+              attempts++;
+              if (!keepPng && quality > MIN_JPEG_QUALITY) {
+                quality = Math.max(MIN_JPEG_QUALITY, quality - 0.12);
+              } else {
+                targetW = Math.max(1, Math.round(targetW * 0.8));
+                targetH = Math.max(1, Math.round(targetH * 0.8));
+                renderAt(targetW, targetH);
+              }
+              dataUrl = canvas.toDataURL(outputMime, keepPng ? undefined : quality);
+            }
+
+            resolve({
+              dataUrl,
+              base64: dataUrl.split(',')[1],
+              mimeType: outputMime,
+              size: estimateBase64Bytes(dataUrl)
+            });
+          } catch (err) {
+            reject(err);
+          }
+        };
+        img.src = ev.target.result;
       };
       reader.readAsDataURL(file);
     });
+  }
+
+  // Lee un archivo no-imagen tal cual (sin redimensionar).
+  function readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(reader.error || new Error('Error leyendo el archivo'));
+      reader.onload = ev => resolve(ev.target.result);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Procesa un archivo (imagen o no) y lo agrega a pendingAttachments.
+  async function addAttachment(file) {
+    const isImage = file.type.startsWith('image/');
+    try {
+      if (isImage) {
+        const { dataUrl, base64, mimeType, size } = await resizeImage(file);
+        pendingAttachments.push({ type: 'image', name: file.name, base64, mimeType, dataUrl, size });
+      } else {
+        const dataUrl = await readFileAsDataUrl(file);
+        pendingAttachments.push({
+          type: 'file',
+          name: file.name,
+          base64: dataUrl.split(',')[1],
+          mimeType: file.type || 'application/octet-stream',
+          dataUrl: null,
+          size: file.size
+        });
+      }
+    } catch (err) {
+      console.error('Error al procesar adjunto:', err);
+      alert(`No se pudo procesar "${file.name}": ${err.message}`);
+    }
+    renderAttachmentsPreview();
+  }
+
+  async function handleFileSelect(e) {
+    const files = [...e.target.files];
+    e.target.value = ''; // reset so same file can be re-selected
+    for (const file of files) {
+      await addAttachment(file);
+    }
   }
 
   function renderAttachmentsPreview() {
@@ -367,19 +464,11 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
 
   // Drag & drop en el área de chat
   document.addEventListener('dragover', e => e.preventDefault());
-  document.addEventListener('drop', e => {
+  document.addEventListener('drop', async e => {
     e.preventDefault();
-    [...e.dataTransfer.files].forEach(file => {
-      const reader = new FileReader();
-      reader.onload = ev => {
-        const dataUrl = ev.target.result;
-        const base64 = dataUrl.split(',')[1];
-        const isImage = file.type.startsWith('image/');
-        pendingAttachments.push({ type: isImage ? 'image' : 'file', name: file.name, base64, mimeType: file.type || 'application/octet-stream', dataUrl: isImage ? dataUrl : null, size: file.size });
-        renderAttachmentsPreview();
-      };
-      reader.readAsDataURL(file);
-    });
+    for (const file of [...e.dataTransfer.files]) {
+      await addAttachment(file);
+    }
   });
 
   function autoResize(el) {
