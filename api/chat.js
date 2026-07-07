@@ -140,7 +140,10 @@ Si no hay instrucción, describe lo que ves de forma clara y útil`;
       return { role: m.role, content: blocks };
     });
 
-    const model = hasImages ? 'pixtral-12b-2409' : 'mistral-small-latest';
+    // NOTA: 'pixtral-12b-2409' fue descontinuado por Mistral (deprecado 12/2025).
+    // 'pixtral-large-latest' también está deprecado. El modelo con visión vigente
+    // recomendado por Mistral es 'mistral-large-latest'.
+    const model = hasImages ? 'mistral-large-latest' : 'mistral-small-latest';
 
     // Función para llamar a Mistral
     async function llamarMistral(key) {
@@ -154,7 +157,11 @@ Si no hay instrucción, describe lo que ves de forma clara y útil`;
           temperature: 0.7
         })
       });
-      if (!response.ok) throw new Error(`Mistral status ${response.status}`);
+      if (!response.ok) {
+        let details = '';
+        try { details = await response.text(); } catch (_) {}
+        throw new Error(`Mistral status ${response.status}: ${details}`);
+      }
       return await response.json();
     }
 
