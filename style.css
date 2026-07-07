@@ -44,6 +44,8 @@
     background: var(--bg);
     color: var(--text);
     height: 100vh;
+    height: 100dvh; /* usa la altura visible real, evita el "salto" al aparecer el teclado */
+    height: calc(var(--vh, 1vh) * 100); /* fallback JS para navegadores sin soporte de dvh */
     display: flex;
     overflow: hidden;
     transition: background 0.25s, color 0.25s;
