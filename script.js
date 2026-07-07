@@ -16,7 +16,7 @@
     document.getElementById('pill-dark').classList.toggle('active',  t === 'dark');
   }
 
-  /* ─── SYSTEM PROMPT (cargado desde comportamiento.json) ─── */
+  /* ─── SYSTEM PROMPT (cargado desde comportamiento.json) ── */
   let SYSTEM_PROMPT = '';
 
   function buildSystemPrompt(cfg) {
@@ -321,6 +321,20 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
     saveHistory();
   }
 
+  /* ─── MOVER CHAT AL INICIO (al reactivarlo) ─── */
+  function moveChatToTop(idx) {
+    if (idx <= 0 || idx >= historyItems.length) return;
+    // Sacar el chat de su posición actual
+    const chat = historyItems.splice(idx, 1)[0];
+    // Insertarlo al inicio
+    historyItems.unshift(chat);
+    // Actualizar currentChatIdx
+    currentChatIdx = 0;
+    // Re-renderizar y guardar
+    renderHistory(historyItems);
+    saveHistory();
+  }
+
   /* ─── CARGAR CHAT ─── */
   function loadChat(idx) {
     if (idx < 0 || idx >= historyItems.length) return;
@@ -410,7 +424,7 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
       list.innerHTML = pinned.map(h => {
         const realIdx = historyItems.indexOf(h);
         return `<div style="background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:0.85rem;color:var(--text);display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;" onclick="loadChat(${realIdx});closePinned()">
-          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">📌 ${esc(h.title)}</span>
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"> ${esc(h.title)}</span>
           <button onclick="event.stopPropagation();togglePinChat(${realIdx});showPinned()" title="Desfijar" style="background:none;border:none;cursor:pointer;color:#e06060;font-size:0.75rem;padding:2px 5px;border-radius:5px;flex-shrink:0;">Desfijar</button>
         </div>`;
       }).join('');
@@ -422,7 +436,7 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
     document.getElementById('pinned-panel').style.display = 'none';
   }
 
-  /* ─── ADJUNTOS ─── */
+  /* ─── ADJUNTOS ── */
 
   // Límite de tamaño de payload de la API (Vercel = 4.5MB por request). Dejamos margen amplio
   // porque el body también incluye el resto de la conversación y la envoltura JSON.
@@ -684,7 +698,10 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
       renderHistory(historyItems);
       saveHistory();
     } else if (currentChatIdx >= 0 && historyItems[currentChatIdx]) {
-      historyItems[currentChatIdx].messages = [...messages];
+      // Si es un chat existente, moverlo al inicio antes de actualizar
+      moveChatToTop(currentChatIdx);
+      // Ahora currentChatIdx es 0 después de moveChatToTop
+      historyItems[0].messages = [...messages];
       saveHistory();
     }
 
