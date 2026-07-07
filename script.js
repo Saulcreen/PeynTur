@@ -506,6 +506,37 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
     }
   }
 
+  /* ─── ATAJOS DE TECLADO ─── */
+  // CTRL+V / CMD+V: pegar imágenes desde el portapapeles
+  document.addEventListener('paste', async (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const imageFiles = [];
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) imageFiles.push(file);
+      }
+    }
+
+    if (imageFiles.length > 0) {
+      e.preventDefault();
+      // Generar nombre descriptivo para imágenes pegadas
+      for (let i = 0; i < imageFiles.length; i++) {
+        const file = imageFiles[i];
+        const ext = file.type.split('/')[1] || 'png';
+        const timestamp = Date.now();
+        const namedFile = new File(
+          [file],
+          `imagen-pegada-${timestamp}${i > 0 ? '-' + i : ''}.${ext}`,
+          { type: file.type }
+        );
+        await addAttachment(namedFile);
+      }
+    }
+  });
+
   function renderAttachmentsPreview() {
     const wrap = document.getElementById('attachments-preview');
     if (pendingAttachments.length === 0) { wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
