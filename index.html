@@ -1361,16 +1361,24 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
         <div class="msg-role-row"><span class="msg-role user">${label}</span></div>
         <div class="msg-bubble user">${attachHtml}${text ? esc(text) : ''}</div>
         <div class="msg-actions">
-          <button class="msg-act-btn" title="Copiar" onclick="copyMessage(this)">📋</button>
-          <button class="msg-act-btn" title="Editar" onclick="editMessage(this)">✏️</button>
+          <button class="msg-act-btn" title="Copiar" onclick="copyMessage(this)">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+          <button class="msg-act-btn" title="Editar" onclick="editMessage(this)">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><line x1="16" y1="8" x2="2" y2="22"/><line x1="17.5" y1="15" x2="9" y2="15"/></svg>
+          </button>
         </div>`;
     } else {
       group.innerHTML = `
         <div class="msg-role-row"><span class="msg-role assistant">${label}</span></div>
         <div class="msg-bubble assistant">${renderMarkdown(text)}</div>
         <div class="msg-actions">
-          <button class="msg-act-btn" title="Reintentar" onclick="retryMessage(this)">🔄</button>
-          <button class="msg-act-btn" title="Copiar" onclick="copyMessage(this)">📋</button>
+          <button class="msg-act-btn" title="Reintentar" onclick="retryMessage(this)">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><path d="M17 2.1l4 4-4 4"/><path d="M3 12.2v-2a4 4 0 0 1 4-4h12.8"/><path d="M7 21.9l-4-4 4-4"/><path d="M21 11.8v2a4 4 0 0 1-4 4H4.2"/></svg>
+          </button>
+          <button class="msg-act-btn" title="Copiar" onclick="copyMessage(this)">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
           <button class="msg-act-btn" title="Más opciones" onclick="toggleMsgMenu(event, this)">
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="vertical-align:-2px;"><circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.5" fill="currentColor" stroke="none"/></svg>
           </button>
@@ -1412,7 +1420,7 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
         Compartir respuesta
       </button>
       <button class="msg-menu-item" onclick="retryFromMenu(${idx})">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2.1l4 4-4 4"/><path d="M3 12.2v-2a4 4 0 0 1 4-4h12.8"/><path d="M7 21.9l-4-4 4-4"/><path d="M21 11.8v2a4 4 0 0 1-4 4H4.2"/></svg>
         Reintentar
       </button>
     `;
