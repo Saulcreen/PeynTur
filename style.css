@@ -144,6 +144,9 @@
     transition: background 0.15s;
   }
   .history-item-row:hover { background: var(--copper-dim); }
+  .history-item-row.active { background: var(--copper-glow); }
+  .history-item-row.active .history-item { color: var(--text); font-weight: 600; }
+  .history-item-row.active .history-kebab-btn { opacity: 1; color: var(--text); }
   .history-kebab-btn {
     background: none;
     border: none;
