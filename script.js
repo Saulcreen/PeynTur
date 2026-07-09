@@ -207,13 +207,20 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
     document.getElementById('history-list').innerHTML = sorted.map(h => {
       const realIdx = historyItems.indexOf(h);
       const pinnedIcon = h.pinned ? '📌 ' : '';
-      return `<div class="history-item-row">
+      const isActive = realIdx === currentChatIdx;
+      return `<div class="history-item-row${isActive ? ' active' : ''}" data-idx="${realIdx}">
         <div class="history-item" style="flex:1;border-radius:7px;background:none;" onclick="loadChat(${realIdx})" title="${esc(h.title)}">${pinnedIcon}${esc(h.title)}</div>
         <button class="history-kebab-btn" onclick="event.stopPropagation();toggleHistoryMenu(event, ${realIdx})" title="Más opciones">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.5" fill="currentColor" stroke="none"/></svg>
         </button>
       </div>`;
     }).join('');
+  }
+
+  function updateActiveHistoryItem() {
+    document.querySelectorAll('.history-item-row').forEach(row => {
+      row.classList.toggle('active', Number(row.dataset.idx) === currentChatIdx);
+    });
   }
 
   /* ─── MENÚ CONTEXTUAL DEL CHAT (tres puntos) ─── */
@@ -339,6 +346,7 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
   function loadChat(idx) {
     if (idx < 0 || idx >= historyItems.length) return;
     currentChatIdx = idx;
+    updateActiveHistoryItem();
     const entry = historyItems[idx];
     if (entry.pinned === undefined) entry.pinned = false;
     messages = [...entry.messages];
@@ -636,6 +644,7 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
     messages = [];
     isNewChat = true;
     currentChatIdx = -1;
+    updateActiveHistoryItem();
     document.getElementById('chat-area').innerHTML = '';
     document.getElementById('chat-area').classList.remove('visible');
     document.getElementById('welcome').classList.remove('hidden');
