@@ -680,22 +680,21 @@
     background: rgba(255,255,255,0.06);
   }
 
-/* ─── TARJETA DE ARCHIVO DESCARGABLE (ESTIRADA) ── */
+/* ─── TARJETA DE ARCHIVO DESCARGABLE ── */
 .file-card {
   display: flex !important;
   flex-direction: row !important;
   align-items: center !important;
   gap: 10px;
   margin: 0.5rem 0;
-  padding: 8px 12px;
+  padding: 8px 12px;           /* Padding compacto */
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--input-bg);
-  
-  /* CAMBIOS AQUÍ: */
-  width: 100% !important;      /* Se estira al máximo del contenedor */
-  max-width: 600px !important; /* Longitud máxima para que no se vea vacía */
-  min-width: 320px;           /* Mantiene un tamaño mínimo decente */
+  width: fit-content;
+  max-width: 320px;
+  min-width: 220px;
+  /* SIN height fijo - que se ajuste al contenido */
 }
 
 .file-card-icon {
@@ -713,12 +712,11 @@
 .file-card-icon svg { width: 12px; height: 12px; }
 
 .file-card-info {
-  flex: 1 1 auto;             /* ESTO ES CLAVE: hace que el texto ocupe todo el espacio central */
+  flex: 1 1 auto;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  overflow: hidden;           /* Evita que un nombre muy largo rompa el diseño */
 }
 
 .file-card-title {
@@ -746,7 +744,7 @@
   display: flex !important;
   align-items: center;
   gap: 6px;
-  flex-shrink: 0;             /* Mantiene los botones a la derecha sin encogerse */
+  flex-shrink: 0;
 }
 
 .file-card-copy-btn {
