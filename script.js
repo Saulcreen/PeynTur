@@ -444,6 +444,79 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
     document.getElementById('pinned-panel').style.display = 'none';
   }
 
+  /* ─── EXTRACCIÓN DE TEXTO DE PDF ─── */
+  async function extractTextFromPDF(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        try {
+          const typedArray = new Uint8Array(ev.target.result);
+          // Configurar worker de PDF.js
+          pdfjsLib.GlobalWorkerOptions.workerSrc =
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+          const pdf = await pdfjsLib.getDocument(typedArray).promise;
+          let fullText = '';
+
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items
+              .map(item => item.str)
+              .join(' ');
+            fullText += `\n--- Página ${i} ---\n${pageText}\n`;
+          }
+
+          resolve({
+            text: fullText.trim(),
+            pages: pdf.numPages,
+            chars: fullText.length
+          });
+        } catch (err) {
+          reject(new Error(`No se pudo leer el PDF: ${err.message}`));
+        }
+      };
+      reader.onerror = () => reject(reader.error);
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  /* ─── EXTRACCIÓN DE TEXTO DE WORD (.docx) ─── */
+  async function extractTextFromDocx(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        try {
+          const arrayBuffer = ev.target.result;
+          const result = await mammoth.extractRawText({ arrayBuffer });
+          resolve({
+            text: result.value.trim(),
+            chars: result.value.length
+          });
+        } catch (err) {
+          reject(new Error(`No se pudo leer el Word: ${err.message}`));
+        }
+      };
+      reader.onerror = () => reject(reader.error);
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  /* ─── EXTRACCIÓN DE TEXTO PLANO (.txt, .md, .csv, .json, etc.) ─── */
+  async function extractTextFromPlainText(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        resolve({
+          text: ev.target.result,
+          chars: ev.target.result.length
+        });
+      };
+      reader.onerror = () => reject(reader.error);
+      reader.readAsText(file);
+    });
+  }
+
   /* ─── ADJUNTOS ── */
 
   // Límite de tamaño de payload de la API (Vercel = 4.5MB por request). Dejamos margen amplio
@@ -543,14 +616,58 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
     });
   }
 
-  // Procesa un archivo (imagen o no) y lo agrega a pendingAttachments.
+  // Procesa un archivo (imagen, documento con texto extraíble, u otro) y lo agrega a pendingAttachments.
   async function addAttachment(file) {
     const isImage = file.type.startsWith('image/');
+    const isPDF = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    const isDocx = file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                   || file.name.toLowerCase().endsWith('.docx');
+    const isPlainText = /\.(txt|md|csv|json|xml|html|css|js|py|java|c|cpp|h|yaml|yml|log|sh|bat)$/i.test(file.name);
+
     try {
       if (isImage) {
         const { dataUrl, base64, mimeType, size } = await resizeImage(file);
         pendingAttachments.push({ type: 'image', name: file.name, base64, mimeType, dataUrl, size });
-      } else {
+      }
+      else if (isPDF || isDocx || isPlainText) {
+        // Extraer texto real del documento en vez de mandar base64 truncado
+        let extracted;
+        let docType;
+
+        if (isPDF) {
+          extracted = await extractTextFromPDF(file);
+          docType = 'PDF';
+        } else if (isDocx) {
+          extracted = await extractTextFromDocx(file);
+          docType = 'Word';
+        } else {
+          extracted = await extractTextFromPlainText(file);
+          docType = 'Texto';
+        }
+
+        // Límite razonable: ~30,000 caracteres (aprox 8,000 tokens)
+        const MAX_TEXT_CHARS = 30000;
+        let textToSend = extracted.text;
+        let truncated = false;
+
+        if (textToSend.length > MAX_TEXT_CHARS) {
+          textToSend = textToSend.slice(0, MAX_TEXT_CHARS);
+          truncated = true;
+        }
+
+        pendingAttachments.push({
+          type: 'document',
+          name: file.name,
+          docType,
+          text: textToSend,
+          pages: extracted.pages || null,
+          chars: extracted.chars,
+          truncated,
+          size: file.size
+        });
+      }
+      else {
+        // Otros archivos: enviar como base64 (limitado)
         const dataUrl = await readFileAsDataUrl(file);
         pendingAttachments.push({
           type: 'file',
@@ -613,9 +730,34 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
     wrap.style.display = 'flex';
     wrap.innerHTML = pendingAttachments.map((a, i) => {
       if (a.type === 'image') {
-        return `<div class="attach-chip"><img src="${a.dataUrl}" alt="${esc(a.name)}" /><span class="attach-chip-name">${esc(a.name)}</span><button class="attach-chip-remove" onclick="removeAttachment(${i})">✕</button></div>`;
+        return `<div class="attach-chip">
+          <img src="${a.dataUrl}" alt="${esc(a.name)}" />
+          <span class="attach-chip-name">${esc(a.name)}</span>
+          <button class="attach-chip-remove" onclick="removeAttachment(${i})">✕</button>
+        </div>`;
+      } else if (a.type === 'document') {
+        const info = a.pages ? `${a.pages} pág · ${(a.chars/1000).toFixed(1)}k chars`
+                             : `${(a.chars/1000).toFixed(1)}k chars`;
+        const truncBadge = a.truncated ? ' <span style="color:#e0a060;font-size:0.7rem;">(truncado)</span>' : '';
+        return `<div class="attach-chip">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+          <span class="attach-chip-name">
+            ${esc(a.name)} <span style="color:var(--text-dim);font-size:0.7rem;">[${a.docType} · ${info}]</span>${truncBadge}
+          </span>
+          <button class="attach-chip-remove" onclick="removeAttachment(${i})">✕</button>
+        </div>`;
       } else {
-        return `<div class="attach-chip"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span class="attach-chip-name">${esc(a.name)}</span><button class="attach-chip-remove" onclick="removeAttachment(${i})">✕</button></div>`;
+        return `<div class="attach-chip">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+          </svg>
+          <span class="attach-chip-name">${esc(a.name)}</span>
+          <button class="attach-chip-remove" onclick="removeAttachment(${i})">✕</button>
+        </div>`;
       }
     }).join('');
   }
@@ -668,10 +810,30 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
       const contentBlocks = [];
       attachmentsCopy.forEach(a => {
         if (a.type === 'image') {
-          contentBlocks.push({ type: 'image', source: { type: 'base64', media_type: a.mimeType, data: a.base64 } });
+          contentBlocks.push({
+            type: 'image',
+            source: { type: 'base64', media_type: a.mimeType, data: a.base64 }
+          });
+        } else if (a.type === 'document') {
+          // Enviar el texto extraído del documento (PDF/Word/texto plano)
+          let header = `[Documento adjunto: ${a.name} (${a.docType}`;
+          if (a.pages) header += `, ${a.pages} páginas`;
+          header += `)]\n`;
+          if (a.truncated) {
+            header += `[NOTA: El documento es muy largo (${(a.chars/1000).toFixed(1)}k caracteres). Solo se incluyen los primeros 30,000 caracteres.]\n\n`;
+          } else {
+            header += '\n';
+          }
+          contentBlocks.push({
+            type: 'text',
+            text: header + a.text
+          });
         } else {
-          // For non-image files: send as text with filename context
-          contentBlocks.push({ type: 'text', text: `[Archivo adjunto: ${a.name}]\nContenido en base64 (${a.mimeType}): ${a.base64.slice(0, 2000)}${a.base64.length > 2000 ? '... (truncado)' : ''}` });
+          // Otros archivos: mantener base64 (limitado)
+          contentBlocks.push({
+            type: 'text',
+            text: `[Archivo adjunto: ${a.name}]\nContenido en base64 (${a.mimeType}): ${a.base64.slice(0, 2000)}${a.base64.length > 2000 ? '... (truncado)' : ''}`
+          });
         }
       });
       if (text) contentBlocks.push({ type: 'text', text });
@@ -790,7 +952,30 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
     s = processedLines.join('\n');
 
     // Markdown
-    s = s.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+    s = s.replace(/```(\w+)?\n?([\s\S]*?)```/g, (match, lang, code) => {
+      const langLabel = lang || 'texto';
+      const codeId = 'code-' + Math.random().toString(36).slice(2, 10);
+      const escapedCode = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      return `<div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">${langLabel}</span>
+          <button class="code-copy-btn" onclick="copyCodeBlock(this, '${codeId}')" title="Copiar">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+          </button>
+          <button class="code-download-btn" onclick="downloadCodeBlock('${codeId}', '${langLabel}')" title="Descargar como archivo">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          </button>
+        </div>
+        <pre id="${codeId}" data-lang="${langLabel}"><code>${escapedCode}</code></pre>
+      </div>`;
+    });
     s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
     s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     s = s.replace(/__(.+?)__/g, '<strong>$1</strong>');
@@ -906,6 +1091,14 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
       <button class="msg-menu-item" onclick="retryFromMenu(${idx})">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2.1l4 4-4 4"/><path d="M3 12.2v-2a4 4 0 0 1 4-4h12.8"/><path d="M7 21.9l-4-4 4-4"/><path d="M21 11.8v2a4 4 0 0 1-4 4H4.2"/></svg>
         Reintentar
+      </button>
+      <button class="msg-menu-item" onclick="downloadFromMenu(${idx})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Descargar como archivo
       </button>
     `;
 
@@ -1199,4 +1392,89 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
       isRecording = false;
       btn.classList.remove('recording');
     }
+  }
+
+  /* ─── COPIAR BLOQUE DE CÓDIGO ─── */
+  function copyCodeBlock(btn, codeId) {
+    const pre = document.getElementById(codeId);
+    if (!pre) return;
+    const code = pre.querySelector('code').textContent;
+    navigator.clipboard.writeText(code).then(() => {
+      const original = btn.innerHTML;
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+      setTimeout(() => { btn.innerHTML = original; }, 1500);
+    }).catch(() => {});
+  }
+
+  /* ─── DESCARGAR BLOQUE DE CÓDIGO COMO ARCHIVO ─── */
+  function downloadCodeBlock(codeId, lang) {
+    const pre = document.getElementById(codeId);
+    if (!pre) return;
+    const code = pre.querySelector('code').textContent;
+
+    // Mapeo de lenguajes a extensiones
+    const extMap = {
+      'javascript': 'js', 'js': 'js', 'typescript': 'ts', 'ts': 'ts',
+      'python': 'py', 'py': 'py', 'java': 'java', 'c': 'c', 'cpp': 'cpp', 'c++': 'cpp',
+      'html': 'html', 'css': 'css', 'json': 'json', 'xml': 'xml', 'yaml': 'yaml', 'yml': 'yaml',
+      'markdown': 'md', 'md': 'md', 'sql': 'sql', 'bash': 'sh', 'sh': 'sh', 'shell': 'sh',
+      'php': 'php', 'ruby': 'rb', 'go': 'go', 'rust': 'rs', 'swift': 'swift', 'kotlin': 'kt',
+      'texto': 'txt', 'text': 'txt', 'csv': 'csv'
+    };
+
+    const ext = extMap[lang.toLowerCase()] || 'txt';
+    const filename = `peyntur-codigo-${Date.now()}.${ext}`;
+
+    // Crear blob y descargar
+    const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
+    if (typeof saveAs !== 'undefined') {
+      saveAs(blob, filename);
+    } else {
+      // Fallback
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  /* ─── DESCARGAR MENSAJE COMPLETO COMO ARCHIVO ─── */
+  function downloadMessage(idx, format = 'txt') {
+    const content = messages[idx];
+    if (!content) return;
+
+    let text;
+    if (Array.isArray(content.content)) {
+      text = content.content
+        .filter(b => b.type === 'text')
+        .map(b => b.text)
+        .join('\n\n');
+    } else {
+      text = content.content;
+    }
+
+    const filename = `peyntur-respuesta-${Date.now()}.${format}`;
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+
+    if (typeof saveAs !== 'undefined') {
+      saveAs(blob, filename);
+    } else {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  function downloadFromMenu(idx) {
+    closeMsgMenu();
+    downloadMessage(idx);
   }
