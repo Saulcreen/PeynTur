@@ -686,32 +686,32 @@
   flex-direction: row !important;
   align-items: center !important;
   gap: 12px;
-  margin: 0.5rem 0;
-  padding: 10px 14px;
+  margin: 0.4rem 0;
+  padding: 8px 14px;            /* ← padding vertical reducido */
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--input-bg);
   width: fit-content;
-  min-width: 240px;
-  max-width: 380px;
-  height: 52px;
+  min-width: 260px;
+  max-width: 420px;              /* ← más ancha */
+  height: auto;
   box-sizing: border-box;
 }
 
 .file-card-icon {
   flex-shrink: 0;
   float: none !important;
-  width: 28px;
-  height: 28px;
+  width: 24px;                   /* ← ícono pequeño */
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: 6px;
   color: var(--text-muted);
 }
 
-.file-card-icon svg { width: 14px; height: 14px; }
+.file-card-icon svg { width: 12px; height: 12px; }
 
 .file-card-info {
   flex: 1 1 auto;
@@ -753,8 +753,8 @@
   border: 1px solid var(--border);
   color: var(--text-muted);
   cursor: pointer;
-  padding: 5px;
-  border-radius: 6px;
+  padding: 4px;
+  border-radius: 5px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -772,8 +772,8 @@
   border: 1px solid var(--border);
   color: var(--text);
   cursor: pointer;
-  padding: 6px 12px;
-  border-radius: 7px;
+  padding: 5px 11px;            /* ← botón compacto */
+  border-radius: 6px;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
   font-size: 0.75rem;
