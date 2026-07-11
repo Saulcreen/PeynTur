@@ -680,109 +680,215 @@
     background: rgba(255,255,255,0.06);
   }
 
-/* ─── TARJETA DE ARCHIVO DESCARGABLE (VERSIÓN ALARGADA) ── */
-.file-card {
+/* ─── TARJETA DE ARCHIVO DESCARGABLE ── */
+
+..file-card {
+
   display: flex !important;
+
   flex-direction: row !important;
+
   align-items: center !important;
-  gap: 16px;                  /* Más espacio entre icono y texto */
-  margin: 0.8rem 0;
-  padding: 12px 24px;         /* Más padding horizontal para mayor longitud */
+
+  gap: 10px;
+
+  margin: 0.5rem 0;
+
+  padding: 7px 10px;
+
   border: 1px solid var(--border);
-  border-radius: 12px;
+
+  border-radius: 10px;
+
   background: var(--input-bg);
+
   
-  /* Ajuste de largo superior */
-  width: 100%;                
-  max-width: 600px;           /* Más largo para mayor presencia visual */
-  min-width: 400px;           /* Base más amplia */
+
+  /* Cambios para estirarlo */
+
+  width: 100%;           /* Ocupará todo el ancho disponible */
+
+  max-width: 800px;      /* Aumenta este valor para el límite máximo deseado */
+
+  min-width: 350px;      /* Mantiene el tamaño mínimo */
+
 }
+
+
 
 .file-card-icon {
+
   flex-shrink: 0;
-  width: 32px;                /* Icono más grande */
-  height: 32px;
+
+  width: 24px;
+
+  height: 24px;
+
   display: flex;
+
   align-items: center;
+
   justify-content: center;
+
   border: 1px solid var(--border);
-  border-radius: 8px;
+
+  border-radius: 6px;
+
   color: var(--text-muted);
+
 }
 
-.file-card-icon svg { width: 16px; height: 16px; }
+
+
+.file-card-icon svg { width: 12px; height: 12px; }
+
+
 
 .file-card-info {
+
   flex: 1 1 auto;
+
   min-width: 0;
+
   display: flex;
+
   flex-direction: column;
-  gap: 3px;
+
+  gap: 2px;
+
 }
+
+
 
 .file-card-title {
+
   font-family: 'Syne', sans-serif;
+
   font-weight: 700;
-  font-size: 0.9rem;          /* Título ligeramente más grande */
+
+  font-size: 0.82rem;
+
   color: var(--text);
+
   overflow: hidden;
+
   text-overflow: ellipsis;
+
   white-space: nowrap;
+
   line-height: 1.2;
+
   margin: 0;
+
 }
+
+
 
 .file-card-subtitle {
+
   font-family: 'Inter', sans-serif;
-  font-size: 0.75rem;
+
+  font-size: 0.68rem;
+
   color: var(--text-dim);
+
   white-space: nowrap;
+
   line-height: 1.2;
+
   margin: 0;
+
 }
+
+
 
 .file-card-actions {
+
   display: flex !important;
+
   align-items: center;
-  gap: 12px;                  /* Más separación para los botones */
+
+  gap: 6px;
+
   flex-shrink: 0;
+
 }
+
+
 
 .file-card-copy-btn {
+
   background: none;
+
   border: 1px solid var(--border);
+
   color: var(--text-muted);
+
   cursor: pointer;
-  padding: 6px;               /* Botón de copiar más cómodo */
-  border-radius: 6px;
+
+  padding: 4px;
+
+  border-radius: 5px;
+
   display: flex;
+
   align-items: center;
+
   justify-content: center;
+
   transition: all 0.15s;
+
 }
+
+
 
 .file-card-copy-btn:hover {
+
   background: var(--copper-dim);
+
   color: var(--copper);
+
   border-color: var(--copper);
+
 }
+
+
 
 .file-card-download-btn {
+
   background: none;
+
   border: 1px solid var(--border);
+
   color: var(--text);
+
   cursor: pointer;
-  padding: 8px 18px;          /* Botón más largo y cómodo */
-  border-radius: 7px;
+
+  padding: 5px 10px;
+
+  border-radius: 6px;
+
   font-family: 'Inter', sans-serif;
+
   font-weight: 500;
-  font-size: 0.8rem;
+
+  font-size: 0.75rem;
+
   white-space: nowrap;
+
   transition: all 0.15s;
+
 }
 
+
+
 .file-card-download-btn:hover {
+
   background: var(--copper-dim);
+
   color: var(--copper);
+
   border-color: var(--copper);
-}
+
+} 
+
