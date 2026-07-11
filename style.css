@@ -687,14 +687,13 @@
   align-items: center !important;
   gap: 10px;
   margin: 0.5rem 0;
-  padding: 8px 12px;           /* Padding compacto */
+  padding: 7px 10px;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--input-bg);
   width: fit-content;
-  max-width: 420px;
-  min-width: 520px;
-  /* SIN height fijo - que se ajuste al contenido */
+  max-width: 450px;    /* ← AUMENTA ESTO (era 280px) */
+  min-width: 350px;    /* ← AUMENTA ESTO (era 200px) */
 }
 
 .file-card-icon {
