@@ -53,7 +53,14 @@ ${cap.restringido.map(c => '🚫 ' + c).join('\n')}
 - Despedida: "${esp.despedida}"
 
 === CREACIÓN DE ARCHIVOS ===
-Cuando el usuario te pida crear, generar o redactar un archivo (Word, PDF, texto, código, etc.), coloca SIEMPRE el contenido completo dentro de un único bloque de código con el lenguaje correspondiente al tipo de archivo (por ejemplo \`\`\`word para Word, \`\`\`txt para texto plano, \`\`\`python para un script, etc.). La interfaz ya se encarga de convertir ese bloque en un archivo descargable.
+Cuando el usuario te pida crear, generar o redactar un archivo, coloca SIEMPRE el contenido completo dentro de un único bloque de código usando este formato exacto en la línea de apertura: \`\`\`lenguaje:nombre_de_archivo.extension
+Ejemplos:
+- Documento Word → \`\`\`word:Informe_Ventas.docx
+- Script Python → \`\`\`python:analizar_datos.py
+- Página web → \`\`\`html:index.html
+- Texto plano → \`\`\`texto:notas.txt
+Elige siempre un nombre de archivo corto y descriptivo (sin espacios raros) con la extensión correcta. La interfaz convierte automáticamente ese bloque en una tarjeta de archivo descargable, así que NUNCA olvides el ":nombre_de_archivo.extension".
+Actualmente no puedes generar archivos PDF reales; si te piden un PDF, ofrece un Word (\`\`\`word:...\`\`\`) o texto plano en su lugar y acláralo brevemente.
 Fuera del bloque de código, tu respuesta debe ser SOLO una confirmación breve (1-2 frases), por ejemplo "Listo, ya creé tu archivo" o "Aquí tienes tu documento". NUNCA repitas, resumas ni describas el contenido del archivo en el texto normal de tu respuesta: eso ya está en el bloque de código y mostrarlo dos veces es redundante.
 
 NUNCA uses emojis bajo ninguna circunstancia.`;
@@ -69,7 +76,13 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
       SYSTEM_PROMPT = `Eres PeynTur, un asistente de IA amable y profesional. Responde en español. No generes contenido inapropiado. NUNCA uses emojis.
 
 === CREACIÓN DE ARCHIVOS ===
-Cuando el usuario te pida crear, generar o redactar un archivo (Word, PDF, texto, código, etc.), coloca SIEMPRE el contenido completo dentro de un único bloque de código con el lenguaje correspondiente al tipo de archivo (por ejemplo \`\`\`word para Word, \`\`\`txt para texto plano, \`\`\`python para un script, etc.). La interfaz ya se encarga de convertir ese bloque en un archivo descargable.
+Cuando el usuario te pida crear, generar o redactar un archivo, coloca SIEMPRE el contenido completo dentro de un único bloque de código usando este formato exacto en la línea de apertura: \`\`\`lenguaje:nombre_de_archivo.extension
+Ejemplos:
+- Documento Word → \`\`\`word:Informe_Ventas.docx
+- Script Python → \`\`\`python:analizar_datos.py
+- Página web → \`\`\`html:index.html
+- Texto plano → \`\`\`texto:notas.txt
+Elige siempre un nombre de archivo corto y descriptivo con la extensión correcta. Actualmente no puedes generar archivos PDF reales; si te piden un PDF, ofrece un Word o texto plano en su lugar y acláralo brevemente.
 Fuera del bloque de código, tu respuesta debe ser SOLO una confirmación breve (1-2 frases), por ejemplo "Listo, ya creé tu archivo". NUNCA repitas, resumas ni describas el contenido del archivo en el texto normal de tu respuesta.`;
     }
   }
@@ -890,6 +903,7 @@ Fuera del bloque de código, tu respuesta debe ser SOLO una confirmación breve 
   /* ─── MARKDOWN + LATEX ─── */
   function renderMarkdown(text) {
     const latexBlocks = [];
+    const codeBlocks = [];
     let s = text;
 
     // Extraer LaTeX antes de escapar HTML
@@ -906,7 +920,60 @@ Fuera del bloque de código, tu respuesta debe ser SOLO una confirmación breve 
       latexBlocks.push({ type: 'inline', math }); return '%%LATEX' + (latexBlocks.length-1) + '%%';
     });
 
-    // Escapar HTML
+    // Extraer bloques de código ANTES de escapar HTML (para no escapar dos veces
+    // el contenido, lo que corrompía archivos HTML/código al descargarlos) y ANTES
+    // del reemplazo global de "\n" por "<br>" (para no perder saltos de línea reales
+    // dentro del código al copiar/descargar).
+    // Sintaxis soportada: ```lenguaje  o  ```lenguaje:nombre_archivo.ext
+    s = s.replace(/```([\w+-]*)?(?::([^\n`]+))?\n?([\s\S]*?)```/g, (match, lang, filenameRaw, code) => {
+      const langLabel = (lang || 'texto').toLowerCase();
+      const codeId = 'code-' + Math.random().toString(36).slice(2, 10);
+      const escapedCode = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+      // Extensiones/tipos de código vs. documentos (define el ícono y la etiqueta)
+      const codeExts = ['js','javascript','ts','typescript','py','python','java','c','cpp','c++','html','css','json','xml','yaml','yml','sql','bash','sh','shell','php','ruby','rb','go','rust','rs','swift','kotlin','kt'];
+      const extLabels = { javascript:'JS', js:'JS', typescript:'TS', ts:'TS', python:'Python', py:'Python', html:'HTML', css:'CSS', json:'JSON', xml:'XML', yaml:'YAML', yml:'YAML', sql:'SQL', bash:'Bash', sh:'Shell', shell:'Shell', php:'PHP', ruby:'Ruby', rb:'Ruby', go:'Go', rust:'Rust', rs:'Rust', swift:'Swift', kotlin:'Kotlin', kt:'Kotlin', word:'Word', docx:'Word', doc:'Word', texto:'Texto', text:'Texto', csv:'CSV', md:'Markdown', markdown:'Markdown' };
+      const isCode = codeExts.includes(langLabel);
+
+      let filename = filenameRaw ? filenameRaw.trim().replace(/["']/g, '') : '';
+      let title, subtitle;
+      if (filename) {
+        const base = filename.replace(/\.[^.]+$/, '') || filename;
+        title = base.charAt(0).toUpperCase() + base.slice(1);
+        const ext = (filename.split('.').pop() || langLabel).toUpperCase();
+        subtitle = isCode ? `Código · ${ext}` : `Documento · ${ext}`;
+      } else {
+        title = (extLabels[langLabel] || langLabel.charAt(0).toUpperCase() + langLabel.slice(1));
+        subtitle = isCode ? `Código · ${extLabels[langLabel] || langLabel.toUpperCase()}` : (extLabels[langLabel] || 'Archivo');
+      }
+
+      const filenameAttr = filename ? filename.replace(/'/g, "\\'") : '';
+      const codeIconSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>`;
+      const fileIconSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
+
+      const cardHtml = `<div class="file-card">
+        <div class="file-card-icon">${isCode ? codeIconSvg : fileIconSvg}</div>
+        <div class="file-card-info">
+          <div class="file-card-title">${title}</div>
+          <div class="file-card-subtitle">${subtitle}</div>
+        </div>
+        <div class="file-card-actions">
+          <button class="file-card-copy-btn" onclick="copyCodeBlock(this, '${codeId}')" title="Copiar">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+          </button>
+          <button class="file-card-download-btn" onclick="downloadCodeBlock('${codeId}', '${langLabel}', '${filenameAttr}')">Descargar</button>
+        </div>
+        <pre id="${codeId}" data-lang="${langLabel}" style="display:none;"><code>${escapedCode}</code></pre>
+      </div>`;
+
+      codeBlocks.push(cardHtml);
+      return '%%CODEBLOCK' + (codeBlocks.length - 1) + '%%';
+    });
+
+    // Escapar HTML (ya no toca el código, que fue extraído arriba)
     s = s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
     // Tablas markdown
@@ -959,31 +1026,6 @@ Fuera del bloque de código, tu respuesta debe ser SOLO una confirmación breve 
     }
     s = processedLines.join('\n');
 
-    // Markdown
-    s = s.replace(/```(\w+)?\n?([\s\S]*?)```/g, (match, lang, code) => {
-      const langLabel = lang || 'texto';
-      const codeId = 'code-' + Math.random().toString(36).slice(2, 10);
-      const escapedCode = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-      return `<div class="code-block">
-        <div class="code-header">
-          <span class="code-lang">${langLabel}</span>
-          <button class="code-copy-btn" onclick="copyCodeBlock(this, '${codeId}')" title="Copiar">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="9" y="9" width="13" height="13" rx="2"/>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-          </button>
-          <button class="code-download-btn" onclick="downloadCodeBlock('${codeId}', '${langLabel}')" title="Descargar como archivo">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-          </button>
-        </div>
-        <pre id="${codeId}" data-lang="${langLabel}"><code>${escapedCode}</code></pre>
-      </div>`;
-    });
     s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
     s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
     s = s.replace(/__(.+?)__/g, '<strong>$1</strong>');
@@ -1003,6 +1045,9 @@ Fuera del bloque de código, tu respuesta debe ser SOLO una confirmación breve 
         return block.type === 'display' ? '$$' + block.math + '$$' : '$' + block.math + '$';
       }
     });
+
+    // Restaurar tarjetas de código/archivo
+    s = s.replace(/%%CODEBLOCK(\d+)%%/g, (_, i) => codeBlocks[parseInt(i)]);
 
     return s;
   }
@@ -1447,12 +1492,12 @@ Fuera del bloque de código, tu respuesta debe ser SOLO una confirmación breve 
   }
 
   /* ─── DESCARGAR BLOQUE DE CÓDIGO COMO ARCHIVO ─── */
-  function downloadCodeBlock(codeId, lang) {
+  function downloadCodeBlock(codeId, lang, filename) {
     const pre = document.getElementById(codeId);
     if (!pre) return;
     const code = pre.querySelector('code').textContent;
 
-    // Mapeo de lenguajes a extensiones
+    // Mapeo de lenguajes a extensiones (se usa solo si no vino un nombre de archivo explícito)
     const extMap = {
       'javascript': 'js', 'js': 'js', 'typescript': 'ts', 'ts': 'ts',
       'python': 'py', 'py': 'py', 'java': 'java', 'c': 'c', 'cpp': 'cpp', 'c++': 'cpp',
@@ -1463,20 +1508,26 @@ Fuera del bloque de código, tu respuesta debe ser SOLO una confirmación breve 
       'word': 'docx', 'docx': 'docx', 'doc': 'docx'
     };
 
-    const ext = extMap[lang.toLowerCase()] || 'txt';
-    const filename = `peyntur-archivo-${Date.now()}.${ext}`;
+    let finalFilename = (filename || '').trim();
+    let ext;
+    if (finalFilename) {
+      ext = (finalFilename.split('.').pop() || 'txt').toLowerCase();
+    } else {
+      ext = extMap[(lang || '').toLowerCase()] || 'txt';
+      finalFilename = `peyntur-archivo-${Date.now()}.${ext}`;
+    }
 
-    if (ext === 'docx') {
+    if (ext === 'docx' || ext === 'doc') {
       if (typeof htmlDocx === 'undefined') {
         alert('No se pudo generar el archivo Word: la librería no cargó correctamente.');
         return;
       }
-      saveBlob(buildDocxBlob(code), filename);
+      saveBlob(buildDocxBlob(code), finalFilename);
       return;
     }
 
     const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
-    saveBlob(blob, filename);
+    saveBlob(blob, finalFilename);
   }
 
   /* ─── DESCARGAR MENSAJE COMPLETO COMO ARCHIVO ─── */
