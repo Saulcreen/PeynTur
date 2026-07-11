@@ -684,27 +684,28 @@
 .file-card {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin: 0.7rem 0;
-  padding: 12px 14px;
+  gap: 10px;
+  margin: 0.5rem 0;
+  padding: 8px 10px;
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 10px;
   background: var(--input-bg);
+  max-width: 320px;
 }
 
 .file-card-icon {
   flex-shrink: 0;
-  width: 42px;
-  height: 42px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   color: var(--text-muted);
 }
 
-.file-card-icon svg { width: 18px; height: 18px; }
+.file-card-icon svg { width: 14px; height: 14px; }
 
 .file-card-info {
   flex: 1;
@@ -714,7 +715,7 @@
 .file-card-title {
   font-family: 'Syne', sans-serif;
   font-weight: 700;
-  font-size: 0.92rem;
+  font-size: 0.82rem;
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -723,15 +724,15 @@
 
 .file-card-subtitle {
   font-family: 'Inter', sans-serif;
-  font-size: 0.76rem;
+  font-size: 0.7rem;
   color: var(--text-dim);
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .file-card-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-shrink: 0;
 }
 
@@ -740,8 +741,8 @@
   border: 1px solid var(--border);
   color: var(--text-muted);
   cursor: pointer;
-  padding: 8px;
-  border-radius: 8px;
+  padding: 6px;
+  border-radius: 7px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -759,11 +760,11 @@
   border: 1px solid var(--border);
   color: var(--text);
   cursor: pointer;
-  padding: 8px 16px;
-  border-radius: 8px;
+  padding: 6px 12px;
+  border-radius: 7px;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: 0.8rem;
+  font-size: 0.74rem;
   white-space: nowrap;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
