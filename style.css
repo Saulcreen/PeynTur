@@ -680,22 +680,22 @@
     background: rgba(255,255,255,0.06);
   }
 
-/* ─── TARJETA DE ARCHIVO (DISEÑO ORIGINAL MANTENIDO) ── */
+/* ─── TARJETA DE ARCHIVO DESCARGABLE (ESTIRADA) ── */
 .file-card {
   display: flex !important;
   flex-direction: row !important;
   align-items: center !important;
-  gap: 12px;
+  gap: 10px;
   margin: 0.5rem 0;
-  padding: 10px 18px;           /* Padding equilibrado */
+  padding: 8px 12px;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--input-bg);
   
-  /* ESTIRADO HACIA LA DERECHA */
-  width: 100% !important;       /* Ocupa el ancho disponible */
-  max-width: 650px;             /* Ajuste de largo elegante */
-  min-width: 350px;
+  /* CAMBIOS AQUÍ: */
+  width: 100% !important;      /* Se estira al máximo del contenedor */
+  max-width: 600px !important; /* Longitud máxima para que no se vea vacía */
+  min-width: 320px;           /* Mantiene un tamaño mínimo decente */
 }
 
 .file-card-icon {
@@ -713,11 +713,12 @@
 .file-card-icon svg { width: 12px; height: 12px; }
 
 .file-card-info {
-  flex: 1 1 auto;
+  flex: 1 1 auto;             /* ESTO ES CLAVE: hace que el texto ocupe todo el espacio central */
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
+  overflow: hidden;           /* Evita que un nombre muy largo rompa el diseño */
 }
 
 .file-card-title {
@@ -744,17 +745,16 @@
 .file-card-actions {
   display: flex !important;
   align-items: center;
-  gap: 8px; /* Espacio cómodo entre los botones */
-  flex-shrink: 0;
+  gap: 6px;
+  flex-shrink: 0;             /* Mantiene los botones a la derecha sin encogerse */
 }
 
-/* BOTÓN COPIAR - MANTENIENDO DISEÑO ORIGINAL */
 .file-card-copy-btn {
   background: none;
   border: 1px solid var(--border);
   color: var(--text-muted);
   cursor: pointer;
-  padding: 6px;
+  padding: 4px;
   border-radius: 5px;
   display: flex;
   align-items: center;
@@ -768,13 +768,12 @@
   border-color: var(--copper);
 }
 
-/* BOTÓN DESCARGAR - MANTENIENDO DISEÑO ORIGINAL */
 .file-card-download-btn {
   background: none;
   border: 1px solid var(--border);
   color: var(--text);
   cursor: pointer;
-  padding: 6px 14px; /* Un poco más de aire lateral */
+  padding: 5px 10px;
   border-radius: 6px;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
