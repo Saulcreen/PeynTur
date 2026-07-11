@@ -61,7 +61,8 @@ Ejemplos:
 - Texto plano → \`\`\`texto:notas.txt
 Elige siempre un nombre de archivo corto y descriptivo (sin espacios raros) con la extensión correcta. La interfaz convierte automáticamente ese bloque en una tarjeta de archivo descargable, así que NUNCA olvides el ":nombre_de_archivo.extension".
 Actualmente no puedes generar archivos PDF reales; si te piden un PDF, ofrece un Word (\`\`\`word:...\`\`\`) o texto plano en su lugar y acláralo brevemente.
-Fuera del bloque de código, tu respuesta debe ser SOLO una confirmación breve (1-2 frases), por ejemplo "Listo, ya creé tu archivo" o "Aquí tienes tu documento". NUNCA repitas, resumas ni describas el contenido del archivo en el texto normal de tu respuesta: eso ya está en el bloque de código y mostrarlo dos veces es redundante.
+NUNCA digas que no puedes crear, generar o compartir archivos: SIEMPRE puedes hacerlo usando el bloque de código de arriba. No sugieras que el usuario copie y pegue el contenido a mano; la tarjeta descargable ya hace eso por él.
+Orden obligatorio de la respuesta cuando generes un archivo: primero una confirmación breve (1-2 frases, ej. "Listo, ya creé tu archivo" o "Aquí tienes tu documento"), y justo después el bloque de código con el archivo, SIN NADA más a continuación. NUNCA agregues explicaciones, listas de "qué puedes hacer con esto" ni resúmenes antes o después del bloque: eso ya está en el bloque de código y mostrarlo dos veces es redundante.
 
 NUNCA uses emojis bajo ninguna circunstancia.`;
   }
@@ -83,10 +84,11 @@ Ejemplos:
 - Página web → \`\`\`html:index.html
 - Texto plano → \`\`\`texto:notas.txt
 Elige siempre un nombre de archivo corto y descriptivo con la extensión correcta. Actualmente no puedes generar archivos PDF reales; si te piden un PDF, ofrece un Word o texto plano en su lugar y acláralo brevemente.
-Fuera del bloque de código, tu respuesta debe ser SOLO una confirmación breve (1-2 frases), por ejemplo "Listo, ya creé tu archivo". NUNCA repitas, resumas ni describas el contenido del archivo en el texto normal de tu respuesta.`;
+NUNCA digas que no puedes crear, generar o compartir archivos: SIEMPRE puedes hacerlo usando el bloque de código de arriba.
+Orden obligatorio: primero una confirmación breve (1-2 frases, ej. "Listo, ya creé tu archivo"), y justo después el bloque de código, SIN NADA más a continuación. NUNCA agregues explicaciones ni resúmenes antes o después del bloque.`;
     }
   }
-  loadBehavior();
+  const behaviorReady = loadBehavior();
 
   let messages = [];
   let isLoading = false;
@@ -820,6 +822,11 @@ Fuera del bloque de código, tu respuesta debe ser SOLO una confirmación breve 
     const text = input.value.trim();
     if (!text && pendingAttachments.length === 0) return;
 
+    // Aseguramos que comportamiento.json ya haya cargado (y por lo tanto
+    // SYSTEM_PROMPT ya esté listo) antes de armar el request, para no
+    // mandar nunca un primer mensaje sin las instrucciones del asistente.
+    await behaviorReady;
+
     document.getElementById('welcome').classList.add('hidden');
     const chatArea = document.getElementById('chat-area');
     chatArea.classList.add('visible');
@@ -1295,7 +1302,7 @@ Fuera del bloque de código, tu respuesta debe ser SOLO una confirmación breve 
         lastUserIdxWithImage = i;
       }
     });
-    return msgs.map((m, i) => {
+    const mapped = msgs.map((m, i) => {
       if (m.role === 'user' && Array.isArray(m.content) && i !== lastUserIdxWithImage) {
         const hasImage = m.content.some(b => b.type === 'image');
         if (!hasImage) return m;
@@ -1307,6 +1314,14 @@ Fuera del bloque de código, tu respuesta debe ser SOLO una confirmación breve 
       }
       return m;
     });
+
+    // El SYSTEM_PROMPT (identidad, capacidades y reglas de creación de
+    // archivos) se construía pero nunca se enviaba a la API. Lo agregamos
+    // aquí como primer mensaje 'system' en cada request.
+    if (SYSTEM_PROMPT) {
+      return [{ role: 'system', content: SYSTEM_PROMPT }, ...mapped];
+    }
+    return mapped;
   }
 
   async function callAPI(isFirst) {
