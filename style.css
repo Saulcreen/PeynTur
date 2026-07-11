@@ -687,7 +687,7 @@
   align-items: center !important;
   gap: 10px;
   margin: 0.5rem 0;
-  padding: 8px 12px;           /* Padding compacto */
+  padding: 16px 20px;           /* Padding compacto */
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--input-bg);
