@@ -680,45 +680,66 @@
     background: rgba(255,255,255,0.06);
   }
 
-/* ─── TARJETA DE ARCHIVO FORZADA A CRECER ── */
+/* ─── CONTENEDOR PRINCIPAL ── */
 .file-card {
   display: flex !important;
   flex-direction: row !important;
   align-items: center !important;
-  gap: 20px !important; 
-  margin: 1rem 0 !important;
-  
-  /* Forzamos el tamaño */
-  padding: 20px 30px !important; /* Más alto (20px) y más ancho (30px) */
-  width: 100% !important;
-  max-width: 900px !important;   /* Aumentado a 900px */
-  min-width: 400px !important;
-  
+  justify-content: space-between !important; /* Mantiene icono a la izq y botón a la der */
+  gap: 15px !important;
+  padding: 12px 20px !important;
+  margin: 10px 0 !important;
   border: 1px solid var(--border);
-  border-radius: 16px !important; 
+  border-radius: 12px !important;
   background: var(--input-bg);
-  box-sizing: border-box !important; /* Asegura que el padding no rompa el ancho */
+  width: 100% !important;
+  max-width: 600px !important; /* Ajusta este ancho máximo a tu gusto */
+  box-sizing: border-box !important;
 }
 
-/* Aseguramos que el contenido interno tenga espacio */
-.file-card-info {
-  flex: 1 !important; /* Esto hace que el centro se estire todo lo posible */
-  min-width: 0 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 6px !important;
-}
-
-/* Botones más grandes */
-.file-card-actions {
+/* Contenedor del Icono */
+.file-card-icon {
   display: flex !important;
   align-items: center !important;
-  gap: 15px !important;
-  flex-shrink: 0 !important;
+  justify-content: center !important;
+  width: 40px !important;
+  height: 40px !important;
+  background: rgba(255, 255, 255, 0.05); /* Fondo suave para el icono */
+  border-radius: 8px !important;
+  color: var(--text-muted);
 }
 
+/* Información (Título y subtítulo) */
+.file-card-info {
+  flex: 1 !important; /* Ocupa el espacio central */
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  gap: 2px !important;
+  overflow: hidden;
+}
+
+.file-card-title {
+  font-family: sans-serif;
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin: 0 !important;
+}
+
+.file-card-subtitle {
+  font-family: sans-serif;
+  font-size: 0.75rem;
+  opacity: 0.7;
+  margin: 0 !important;
+}
+
+/* Botón Descargar */
 .file-card-download-btn {
-  padding: 10px 20px !important; /* Botón más grande */
-  font-size: 0.9rem !important;
-  border-radius: 10px !important;
+  background: transparent !important;
+  border: 1px solid var(--border) !important;
+  padding: 8px 16px !important;
+  border-radius: 8px !important;
+  cursor: pointer;
+  font-size: 0.85rem;
+  white-space: nowrap;
 }
