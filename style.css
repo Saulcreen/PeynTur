@@ -680,63 +680,96 @@
     background: rgba(255,255,255,0.06);
   }
 
-/* ─── BLOQUES DE CÓDIGO CON ACCIONES ─── */
-.code-block {
-  position: relative;
-  margin: 0.8rem 0;
+/* ─── TARJETA DE ARCHIVO DESCARGABLE (código o documentos) ─── */
+.file-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0.7rem 0;
+  padding: 12px 14px;
   border: 1px solid var(--border);
-  border-radius: 10px;
-  overflow: hidden;
+  border-radius: 14px;
   background: var(--input-bg);
 }
 
-.code-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
-  font-size: 0.75rem;
-}
-
-.code-lang {
-  color: var(--copper);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  flex: 1;
-}
-
-.code-copy-btn, .code-download-btn {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 4px 6px;
-  border-radius: 5px;
+.file-card-icon {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s, color 0.15s;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-muted);
 }
 
-.code-copy-btn:hover, .code-download-btn:hover {
+.file-card-icon svg { width: 18px; height: 18px; }
+
+.file-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.file-card-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-card-subtitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.76rem;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.file-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.file-card-copy-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.file-card-copy-btn:hover {
   background: var(--copper-dim);
   color: var(--copper);
+  border-color: var(--copper);
 }
 
-.code-block pre {
-  margin: 0;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-}
-
-.code-block code {
-  background: transparent;
-  padding: 12px 14px;
-  display: block;
-  font-size: 0.83rem;
+.file-card-download-btn {
+  background: none;
+  border: 1px solid var(--border);
   color: var(--text);
+  cursor: pointer;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.file-card-download-btn:hover {
+  background: var(--copper-dim);
+  color: var(--copper);
+  border-color: var(--copper);
 }
