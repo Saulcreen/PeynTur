@@ -685,24 +685,24 @@
   display: flex !important;
   flex-direction: row !important;
   align-items: center !important;
-  gap: 12px;
+  gap: 10px;
   margin: 0.4rem 0;
-  padding: 8px 14px;            /* ← padding vertical reducido */
+  padding: 6px 10px;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--input-bg);
   width: fit-content;
-  min-width: 260px;
-  max-width: 420px;              /* ← más ancha */
-  height: auto;
+  max-width: 260px;
+  min-width: 180px;
+  height: 48px;
   box-sizing: border-box;
 }
 
 .file-card-icon {
   flex-shrink: 0;
   float: none !important;
-  width: 24px;                   /* ← ícono pequeño */
-  height: 24px;
+  width: 22px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -711,7 +711,7 @@
   color: var(--text-muted);
 }
 
-.file-card-icon svg { width: 12px; height: 12px; }
+.file-card-icon svg { width: 11px; height: 11px; }
 
 .file-card-info {
   flex: 1 1 auto;
@@ -722,7 +722,7 @@
 .file-card-title {
   font-family: 'Syne', sans-serif;
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.75rem;
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -732,7 +732,7 @@
 
 .file-card-subtitle {
   font-family: 'Inter', sans-serif;
-  font-size: 0.7rem;
+  font-size: 0.62rem;
   color: var(--text-dim);
   margin-top: 1px;
   white-space: nowrap;
@@ -743,7 +743,7 @@
   display: flex !important;
   float: none !important;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-shrink: 0;
   order: 3;
 }
@@ -772,11 +772,11 @@
   border: 1px solid var(--border);
   color: var(--text);
   cursor: pointer;
-  padding: 5px 11px;            /* ← botón compacto */
+  padding: 4px 8px;
   border-radius: 6px;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   white-space: nowrap;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
