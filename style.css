@@ -686,30 +686,32 @@
   flex-direction: row !important;
   align-items: center !important;
   gap: 10px;
-  margin: 0.5rem 0;
-  padding: 7px 10px;
+  margin: 0.4rem 0;
+  padding: 6px 10px;            /* ← más delgada */
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--input-bg);
   width: fit-content;
-  max-width: 280px;
-  min-width: 200px;
+  max-width: 260px;             /* ← más angosta */
+  min-width: 180px;
+  height: 48px;                 /* ← altura fija tipo chip */
+  box-sizing: border-box;
 }
 
 .file-card-icon {
   flex-shrink: 0;
   float: none !important;
-  width: 26px;
-  height: 26px;
+  width: 22px;                  /* ← ícono más pequeño */
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: 6px;
   color: var(--text-muted);
 }
 
-.file-card-icon svg { width: 13px; height: 13px; }
+.file-card-icon svg { width: 11px; height: 11px; }
 
 .file-card-info {
   flex: 1 1 auto;
@@ -720,19 +722,21 @@
 .file-card-title {
   font-family: 'Syne', sans-serif;
   font-weight: 700;
-  font-size: 0.8rem;
+  font-size: 0.75rem;           /* ← texto más pequeño */
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  line-height: 1.2;
 }
 
 .file-card-subtitle {
   font-family: 'Inter', sans-serif;
-  font-size: 0.68rem;
+  font-size: 0.62rem;           /* ← subtítulo más pequeño */
   color: var(--text-dim);
-  margin-top: 0;
+  margin-top: 1px;
   white-space: nowrap;
+  line-height: 1.2;
 }
 
 .file-card-actions {
@@ -749,8 +753,8 @@
   border: 1px solid var(--border);
   color: var(--text-muted);
   cursor: pointer;
-  padding: 5px;
-  border-radius: 6px;
+  padding: 4px;
+  border-radius: 5px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -768,11 +772,11 @@
   border: 1px solid var(--border);
   color: var(--text);
   cursor: pointer;
-  padding: 5px 10px;
-  border-radius: 7px;
+  padding: 4px 8px;             /* ← botón más compacto */
+  border-radius: 6px;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: 0.74rem;
+  font-size: 0.68rem;           /* ← texto más pequeño */
   white-space: nowrap;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
