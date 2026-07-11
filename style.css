@@ -693,7 +693,7 @@
   background: var(--input-bg);
   width: fit-content;
   max-width: 220px;
-  min-width: 320px;
+  min-width: 520px;
   /* SIN height fijo - que se ajuste al contenido */
 }
 
