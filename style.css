@@ -681,7 +681,7 @@
   }
 
 /* ─── TARJETA DE ARCHIVO DESCARGABLE ── */
-.file-card {
+..file-card {
   display: flex !important;
   flex-direction: row !important;
   align-items: center !important;
@@ -691,9 +691,11 @@
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--input-bg);
-  width: fit-content;
-  max-width: 450px;    /* ← AUMENTA ESTO (era 280px) */
-  min-width: 350px;    /* ← AUMENTA ESTO (era 200px) */
+  
+  /* Cambios para estirarlo */
+  width: 100%;           /* Ocupará todo el ancho disponible */
+  max-width: 800px;      /* Aumenta este valor para el límite máximo deseado */
+  min-width: 350px;      /* Mantiene el tamaño mínimo */
 }
 
 .file-card-icon {
