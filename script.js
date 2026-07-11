@@ -1499,11 +1499,44 @@ Orden obligatorio: primero una confirmación breve (1-2 frases, ej. "Listo, ya c
     const pre = document.getElementById(codeId);
     if (!pre) return;
     const code = pre.querySelector('code').textContent;
-    navigator.clipboard.writeText(code).then(() => {
+
+    const showCopied = () => {
       const original = btn.innerHTML;
       btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
       setTimeout(() => { btn.innerHTML = original; }, 1500);
-    }).catch(() => {});
+    };
+
+    const showFailed = () => {
+      const original = btn.innerHTML;
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e06060" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+      setTimeout(() => { btn.innerHTML = original; }, 1500);
+    };
+
+    // navigator.clipboard requiere contexto seguro (https) y permisos; si falla
+    // o no existe (webview, iframe sin permiso, http, etc.), usamos un fallback
+    // con execCommand para que el copiado no quede fallando en silencio.
+    const fallbackCopy = () => {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = code;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (ok) showCopied(); else showFailed();
+      } catch (e) {
+        showFailed();
+      }
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(code).then(showCopied).catch(fallbackCopy);
+    } else {
+      fallbackCopy();
+    }
   }
 
   /* ─── DESCARGAR BLOQUE DE CÓDIGO COMO ARCHIVO ─── */
