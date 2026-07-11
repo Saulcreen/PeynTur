@@ -681,7 +681,8 @@
   }
 
 /* ─── TARJETA DE ARCHIVO DESCARGABLE ── */
-..file-card {
+/* Corregido: un solo punto al inicio */
+.file-card {
   display: flex !important;
   flex-direction: row !important;
   align-items: center !important;
@@ -692,10 +693,10 @@
   border-radius: 10px;
   background: var(--input-bg);
   
-  /* Cambios para estirarlo */
-  width: 100%;           /* Ocupará todo el ancho disponible */
-  max-width: 800px;      /* Aumenta este valor para el límite máximo deseado */
-  min-width: 350px;      /* Mantiene el tamaño mínimo */
+  /* Ahora sí aplicará el ancho */
+  width: 100%;           
+  max-width: 800px;      
+  min-width: 350px;      
 }
 
 .file-card-icon {
