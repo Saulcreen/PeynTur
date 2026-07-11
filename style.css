@@ -680,99 +680,45 @@
     background: rgba(255,255,255,0.06);
   }
 
-/* ─── TARJETA DE ARCHIVO DESCARGABLE MODIFICADA ── */
+/* ─── TARJETA DE ARCHIVO FORZADA A CRECER ── */
 .file-card {
   display: flex !important;
   flex-direction: row !important;
   align-items: center !important;
-  gap: 15px; /* Un poco más de espacio entre elementos */
-  margin: 0.5rem 0;
+  gap: 20px !important; 
+  margin: 1rem 0 !important;
   
-  /* AJUSTES DE TAMAÑO */
-  padding: 15px 20px; /* 15px arriba/abajo, 20px izquierda/derecha */
+  /* Forzamos el tamaño */
+  padding: 20px 30px !important; /* Más alto (20px) y más ancho (30px) */
+  width: 100% !important;
+  max-width: 900px !important;   /* Aumentado a 900px */
+  min-width: 400px !important;
   
   border: 1px solid var(--border);
-  border-radius: 12px; /* Ligeramente más redondeado para mejor estética */
+  border-radius: 16px !important; 
   background: var(--input-bg);
-  width: 100%;
-  max-width: 800px;
-  min-width: 350px;
+  box-sizing: border-box !important; /* Asegura que el padding no rompa el ancho */
 }
 
-.file-card-icon {
-  flex-shrink: 0;
-  width: 32px; /* Aumenté el tamaño del contenedor del icono */
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--text-muted);
-}
-
-.file-card-icon svg { width: 16px; height: 16px; } /* Icono un poco más grande */
-
+/* Aseguramos que el contenido interno tenga espacio */
 .file-card-info {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px; /* Un poco más de separación entre título y subtítulo */
+  flex: 1 !important; /* Esto hace que el centro se estire todo lo posible */
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
 }
 
-.file-card-title {
-  font-family: 'Syne', sans-serif;
-  font-weight: 700;
-  font-size: 0.9rem; /* Texto un poco más grande */
-  color: var(--text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  line-height: 1.2;
-  margin: 0;
-}
-
-.file-card-subtitle {
-  font-family: 'Inter', sans-serif;
-  font-size: 0.75rem;
-  color: var(--text-dim);
-  white-space: nowrap;
-  line-height: 1.2;
-  margin: 0;
-}
-
+/* Botones más grandes */
 .file-card-actions {
   display: flex !important;
-  align-items: center;
-  gap: 10px; /* Más espacio entre los botones */
-  flex-shrink: 0;
+  align-items: center !important;
+  gap: 15px !important;
+  flex-shrink: 0 !important;
 }
 
 .file-card-download-btn {
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--text);
-  cursor: pointer;
-  padding: 8px 15px; /* Botón más grande para hacer clic fácilmente */
-  border-radius: 8px;
-  font-family: 'Inter', sans-serif;
-  font-weight: 500;
-  font-size: 0.8rem;
-  white-space: nowrap;
-  transition: all 0.15s;
-}
-
-/* El resto de las clases se mantienen igual para asegurar la funcionalidad */
-.file-card-copy-btn {
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s;
+  padding: 10px 20px !important; /* Botón más grande */
+  font-size: 0.9rem !important;
+  border-radius: 10px !important;
 }
