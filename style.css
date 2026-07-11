@@ -682,40 +682,45 @@
 
 /* ─── TARJETA DE ARCHIVO DESCARGABLE (código o documentos) ─── */
 .file-card {
-  display: flex;
-  align-items: center;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
   gap: 10px;
   margin: 0.5rem 0;
-  padding: 8px 10px;
+  padding: 7px 10px;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--input-bg);
-  max-width: 320px;
+  width: fit-content;
+  max-width: 280px;
+  min-width: 200px;
 }
 
 .file-card-icon {
   flex-shrink: 0;
-  width: 30px;
-  height: 30px;
+  float: none !important;
+  width: 26px;
+  height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 7px;
   color: var(--text-muted);
 }
 
-.file-card-icon svg { width: 14px; height: 14px; }
+.file-card-icon svg { width: 13px; height: 13px; }
 
 .file-card-info {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
+  order: 2;
 }
 
 .file-card-title {
   font-family: 'Syne', sans-serif;
   font-weight: 700;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -724,16 +729,19 @@
 
 .file-card-subtitle {
   font-family: 'Inter', sans-serif;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: var(--text-dim);
-  margin-top: 1px;
+  margin-top: 0;
+  white-space: nowrap;
 }
 
 .file-card-actions {
-  display: flex;
+  display: flex !important;
+  float: none !important;
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
+  order: 3;
 }
 
 .file-card-copy-btn {
@@ -741,8 +749,8 @@
   border: 1px solid var(--border);
   color: var(--text-muted);
   cursor: pointer;
-  padding: 6px;
-  border-radius: 7px;
+  padding: 5px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -760,7 +768,7 @@
   border: 1px solid var(--border);
   color: var(--text);
   cursor: pointer;
-  padding: 6px 12px;
+  padding: 5px 10px;
   border-radius: 7px;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
