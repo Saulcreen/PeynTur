@@ -692,8 +692,8 @@
   border-radius: 10px;
   background: var(--input-bg);
   width: fit-content;
-  max-width: 320px;
-  min-width: 220px;
+  max-width: 220px;
+  min-width: 320px;
   /* SIN height fijo - que se ajuste al contenido */
 }
 
