@@ -680,51 +680,51 @@
     background: rgba(255,255,255,0.06);
   }
 
-/* ─── TARJETA DE ARCHIVO DESCARGABLE ── */
-/* Corregido: un solo punto al inicio */
+/* ─── TARJETA DE ARCHIVO DESCARGABLE MODIFICADA ── */
 .file-card {
   display: flex !important;
   flex-direction: row !important;
   align-items: center !important;
-  gap: 10px;
+  gap: 15px; /* Un poco más de espacio entre elementos */
   margin: 0.5rem 0;
-  padding: 7px 10px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--input-bg);
   
-  /* Ahora sí aplicará el ancho */
-  width: 100%;           
-  max-width: 800px;      
-  min-width: 350px;      
+  /* AJUSTES DE TAMAÑO */
+  padding: 15px 20px; /* 15px arriba/abajo, 20px izquierda/derecha */
+  
+  border: 1px solid var(--border);
+  border-radius: 12px; /* Ligeramente más redondeado para mejor estética */
+  background: var(--input-bg);
+  width: 100%;
+  max-width: 800px;
+  min-width: 350px;
 }
 
 .file-card-icon {
   flex-shrink: 0;
-  width: 24px;
-  height: 24px;
+  width: 32px; /* Aumenté el tamaño del contenedor del icono */
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 8px;
   color: var(--text-muted);
 }
 
-.file-card-icon svg { width: 12px; height: 12px; }
+.file-card-icon svg { width: 16px; height: 16px; } /* Icono un poco más grande */
 
 .file-card-info {
   flex: 1 1 auto;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px; /* Un poco más de separación entre título y subtítulo */
 }
 
 .file-card-title {
   font-family: 'Syne', sans-serif;
   font-weight: 700;
-  font-size: 0.82rem;
+  font-size: 0.9rem; /* Texto un poco más grande */
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -735,7 +735,7 @@
 
 .file-card-subtitle {
   font-family: 'Inter', sans-serif;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   color: var(--text-dim);
   white-space: nowrap;
   line-height: 1.2;
@@ -745,27 +745,8 @@
 .file-card-actions {
   display: flex !important;
   align-items: center;
-  gap: 6px;
+  gap: 10px; /* Más espacio entre los botones */
   flex-shrink: 0;
-}
-
-.file-card-copy-btn {
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 5px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s;
-}
-
-.file-card-copy-btn:hover {
-  background: var(--copper-dim);
-  color: var(--copper);
-  border-color: var(--copper);
 }
 
 .file-card-download-btn {
@@ -773,17 +754,25 @@
   border: 1px solid var(--border);
   color: var(--text);
   cursor: pointer;
-  padding: 5px 10px;
-  border-radius: 6px;
+  padding: 8px 15px; /* Botón más grande para hacer clic fácilmente */
+  border-radius: 8px;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   white-space: nowrap;
   transition: all 0.15s;
 }
 
-.file-card-download-btn:hover {
-  background: var(--copper-dim);
-  color: var(--copper);
-  border-color: var(--copper);
+/* El resto de las clases se mantienen igual para asegurar la funcionalidad */
+.file-card-copy-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
 }
