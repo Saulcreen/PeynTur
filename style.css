@@ -680,29 +680,27 @@
     background: rgba(255,255,255,0.06);
   }
 
-/* ─── TARJETA DE ARCHIVO DESCARGABLE (código o documentos) ─── */
+/* ─── TARJETA DE ARCHIVO DESCARGABLE ── */
 .file-card {
   display: flex !important;
   flex-direction: row !important;
   align-items: center !important;
   gap: 10px;
-  margin: 0.4rem 0;
-  padding: 6px 10px;
+  margin: 0.5rem 0;
+  padding: 8px 12px;           /* Padding compacto */
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--input-bg);
   width: fit-content;
-  max-width: 260px;
-  min-width: 180px;
-  height: 65px;
-  box-sizing: border-box;
+  max-width: 320px;
+  min-width: 220px;
+  /* SIN height fijo - que se ajuste al contenido */
 }
 
 .file-card-icon {
   flex-shrink: 0;
-  float: none !important;
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -711,41 +709,42 @@
   color: var(--text-muted);
 }
 
-.file-card-icon svg { width: 11px; height: 11px; }
+.file-card-icon svg { width: 12px; height: 12px; }
 
 .file-card-info {
   flex: 1 1 auto;
   min-width: 0;
-  order: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .file-card-title {
   font-family: 'Syne', sans-serif;
   font-weight: 700;
-  font-size: 0.75rem;
+  font-size: 0.82rem;
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   line-height: 1.2;
+  margin: 0;
 }
 
 .file-card-subtitle {
   font-family: 'Inter', sans-serif;
-  font-size: 0.62rem;
+  font-size: 0.68rem;
   color: var(--text-dim);
-  margin-top: 1px;
   white-space: nowrap;
   line-height: 1.2;
+  margin: 0;
 }
 
 .file-card-actions {
   display: flex !important;
-  float: none !important;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   flex-shrink: 0;
-  order: 3;
 }
 
 .file-card-copy-btn {
@@ -758,7 +757,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: all 0.15s;
 }
 
 .file-card-copy-btn:hover {
@@ -772,13 +771,13 @@
   border: 1px solid var(--border);
   color: var(--text);
   cursor: pointer;
-  padding: 4px 8px;
+  padding: 5px 10px;
   border-radius: 6px;
   font-family: 'Inter', sans-serif;
   font-weight: 500;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   white-space: nowrap;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: all 0.15s;
 }
 
 .file-card-download-btn:hover {
