@@ -52,6 +52,10 @@ ${cap.restringido.map(c => '🚫 ' + c).join('\n')}
 - No sabe: "${esp.no_sabe}"
 - Despedida: "${esp.despedida}"
 
+=== CREACIÓN DE ARCHIVOS ===
+Cuando el usuario te pida crear, generar o redactar un archivo (Word, PDF, texto, código, etc.), coloca SIEMPRE el contenido completo dentro de un único bloque de código con el lenguaje correspondiente al tipo de archivo (por ejemplo \`\`\`word para Word, \`\`\`txt para texto plano, \`\`\`python para un script, etc.). La interfaz ya se encarga de convertir ese bloque en un archivo descargable.
+Fuera del bloque de código, tu respuesta debe ser SOLO una confirmación breve (1-2 frases), por ejemplo "Listo, ya creé tu archivo" o "Aquí tienes tu documento". NUNCA repitas, resumas ni describas el contenido del archivo en el texto normal de tu respuesta: eso ya está en el bloque de código y mostrarlo dos veces es redundante.
+
 NUNCA uses emojis bajo ninguna circunstancia.`;
   }
 
@@ -62,7 +66,11 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
       const cfg = await res.json();
       SYSTEM_PROMPT = buildSystemPrompt(cfg);
     } catch (err) {
-      SYSTEM_PROMPT = `Eres PeynTur, un asistente de IA amable y profesional. Responde en español. No generes contenido inapropiado. NUNCA uses emojis.`;
+      SYSTEM_PROMPT = `Eres PeynTur, un asistente de IA amable y profesional. Responde en español. No generes contenido inapropiado. NUNCA uses emojis.
+
+=== CREACIÓN DE ARCHIVOS ===
+Cuando el usuario te pida crear, generar o redactar un archivo (Word, PDF, texto, código, etc.), coloca SIEMPRE el contenido completo dentro de un único bloque de código con el lenguaje correspondiente al tipo de archivo (por ejemplo \`\`\`word para Word, \`\`\`txt para texto plano, \`\`\`python para un script, etc.). La interfaz ya se encarga de convertir ese bloque en un archivo descargable.
+Fuera del bloque de código, tu respuesta debe ser SOLO una confirmación breve (1-2 frases), por ejemplo "Listo, ya creé tu archivo". NUNCA repitas, resumas ni describas el contenido del archivo en el texto normal de tu respuesta.`;
     }
   }
   loadBehavior();
@@ -1394,6 +1402,38 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
     }
   }
 
+  /* ─── GENERAR ARCHIVO WORD (.docx) REAL A PARTIR DE TEXTO ─── */
+  // Envuelve el texto en un HTML mínimo válido y lo convierte a un Blob .docx
+  // real (formato OOXML) usando html-docx-js, en vez de guardar texto plano
+  // con extensión .docx (que Word abre con advertencias de formato).
+  function buildDocxBlob(text) {
+    const escaped = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    const paragraphs = escaped
+      .split('\n')
+      .map(line => `<p>${line || '&nbsp;'}</p>`)
+      .join('');
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>${paragraphs}</body></html>`;
+    return htmlDocx.asBlob(html);
+  }
+
+  function saveBlob(blob, filename) {
+    if (typeof saveAs !== 'undefined') {
+      saveAs(blob, filename);
+    } else {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  }
+
   /* ─── COPIAR BLOQUE DE CÓDIGO ─── */
   function copyCodeBlock(btn, codeId) {
     const pre = document.getElementById(codeId);
@@ -1419,27 +1459,24 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
       'html': 'html', 'css': 'css', 'json': 'json', 'xml': 'xml', 'yaml': 'yaml', 'yml': 'yaml',
       'markdown': 'md', 'md': 'md', 'sql': 'sql', 'bash': 'sh', 'sh': 'sh', 'shell': 'sh',
       'php': 'php', 'ruby': 'rb', 'go': 'go', 'rust': 'rs', 'swift': 'swift', 'kotlin': 'kt',
-      'texto': 'txt', 'text': 'txt', 'csv': 'csv'
+      'texto': 'txt', 'text': 'txt', 'csv': 'csv',
+      'word': 'docx', 'docx': 'docx', 'doc': 'docx'
     };
 
     const ext = extMap[lang.toLowerCase()] || 'txt';
-    const filename = `peyntur-codigo-${Date.now()}.${ext}`;
+    const filename = `peyntur-archivo-${Date.now()}.${ext}`;
 
-    // Crear blob y descargar
-    const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
-    if (typeof saveAs !== 'undefined') {
-      saveAs(blob, filename);
-    } else {
-      // Fallback
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+    if (ext === 'docx') {
+      if (typeof htmlDocx === 'undefined') {
+        alert('No se pudo generar el archivo Word: la librería no cargó correctamente.');
+        return;
+      }
+      saveBlob(buildDocxBlob(code), filename);
+      return;
     }
+
+    const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
+    saveBlob(blob, filename);
   }
 
   /* ─── DESCARGAR MENSAJE COMPLETO COMO ARCHIVO ─── */
@@ -1457,21 +1494,17 @@ NUNCA uses emojis bajo ninguna circunstancia.`;
       text = content.content;
     }
 
-    const filename = `peyntur-respuesta-${Date.now()}.${format}`;
-    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
-
-    if (typeof saveAs !== 'undefined') {
-      saveAs(blob, filename);
-    } else {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+    if (format === 'docx') {
+      if (typeof htmlDocx === 'undefined') {
+        alert('No se pudo generar el archivo Word: la librería no cargó correctamente.');
+        return;
+      }
+      saveBlob(buildDocxBlob(text), `peyntur-respuesta-${Date.now()}.docx`);
+      return;
     }
+
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    saveBlob(blob, `peyntur-respuesta-${Date.now()}.${format}`);
   }
 
   function downloadFromMenu(idx) {
