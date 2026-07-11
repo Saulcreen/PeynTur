@@ -687,14 +687,14 @@
   align-items: center !important;
   gap: 10px;
   margin: 0.4rem 0;
-  padding: 6px 14px;
+  padding: 6px 10px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--input-bg);
   width: fit-content;
-  max-width: 320px;
-  min-width: 220px;
-  height: 60px;
+  max-width: 260px;
+  min-width: 180px;
+  height: 48px;
   box-sizing: border-box;
 }
 
@@ -717,32 +717,26 @@
   flex: 1 1 auto;
   min-width: 0;
   order: 2;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
 }
 
 .file-card-title {
   font-family: 'Syne', sans-serif;
   font-weight: 700;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  line-height: 1.3;
-  text-align: center;
+  line-height: 1.2;
 }
 
 .file-card-subtitle {
   font-family: 'Inter', sans-serif;
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   color: var(--text-dim);
-  margin-top: 2px;
+  margin-top: 1px;
   white-space: nowrap;
-  line-height: 1.3;
-  text-align: center;
+  line-height: 1.2;
 }
 
 .file-card-actions {
