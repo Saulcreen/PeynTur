@@ -679,3 +679,64 @@
   .md-table tr:hover td {
     background: rgba(255,255,255,0.06);
   }
+
+/* ─── BLOQUES DE CÓDIGO CON ACCIONES ─── */
+.code-block {
+  position: relative;
+  margin: 0.8rem 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--input-bg);
+}
+
+.code-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.75rem;
+}
+
+.code-lang {
+  color: var(--copper);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex: 1;
+}
+
+.code-copy-btn, .code-download-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.code-copy-btn:hover, .code-download-btn:hover {
+  background: var(--copper-dim);
+  color: var(--copper);
+}
+
+.code-block pre {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.code-block code {
+  background: transparent;
+  padding: 12px 14px;
+  display: block;
+  font-size: 0.83rem;
+  color: var(--text);
+}
