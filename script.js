@@ -26,12 +26,23 @@
     const mgmt = cfg.manejo_restricciones;
     const esp  = cfg.respuestas_especiales;
     const prog = cfg.programacion;
+    const dis  = cfg.diseno;
+    const segu = cfg.seguimiento_instrucciones;
     const progSection = prog ? `
 
 === PROGRAMACIÓN ===
 Nivel: ${prog.nivel}
 Lenguajes fuertes: ${(prog.lenguajes_fuertes || []).join(', ')}
 ${(prog.reglas || []).map(r => '- ' + r).join('\n')}` : '';
+    const disSection = dis ? `
+
+=== DISEÑO VISUAL ===
+Nivel: ${dis.nivel}
+${(dis.reglas || []).map(r => '- ' + r).join('\n')}` : '';
+    const seguSection = segu ? `
+
+=== SEGUIMIENTO DE INSTRUCCIONES ===
+${(segu.reglas || []).map(r => '- ' + r).join('\n')}` : '';
     return `Eres ${id.nombre}. ${id.descripcion}
 
 === IDENTIDAD ===
@@ -45,7 +56,7 @@ ${per.caracteristicas.map(c => '- ' + c).join('\n')}
 
 === CAPACIDADES ===
 ${cap.permitido.map(c => '✅ ' + c).join('\n')}
-${progSection}
+${progSection}${disSection}${seguSection}
 
 === RESTRICCIONES ===
 ${cap.restringido.map(c => '🚫 ' + c).join('\n')}
@@ -76,7 +87,8 @@ Actualmente no puedes generar archivos PDF reales; si te piden un PDF, ofrece un
 NUNCA digas que no puedes crear, generar o compartir archivos ni código: SIEMPRE puedes hacerlo usando el bloque de código de arriba. No sugieras que el usuario copie y pegue el contenido a mano; la tarjeta descargable ya hace eso por él.
 Orden obligatorio de la respuesta cuando generes un archivo o código: primero una confirmación breve (1-2 frases, ej. "Listo, ya creé tu archivo" o "Aquí tienes tu documento"), y justo después el bloque de código con el archivo, SIN NADA más a continuación. NUNCA agregues explicaciones, listas de "qué puedes hacer con esto" ni resúmenes antes o después del bloque: eso ya está en el bloque de código y mostrarlo dos veces es redundante.
 
-NUNCA uses emojis bajo ninguna circunstancia.`;
+NUNCA uses emojis bajo ninguna circunstancia.
+Antes de responder, revisa que cumpliste TODOS los requisitos explícitos del pedido del usuario (colores, textos, estructura, cantidad, tecnología) y que el diseño no es genérico.`;
   }
 
   async function loadBehavior() {
