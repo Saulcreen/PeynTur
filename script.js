@@ -25,6 +25,13 @@
     const cap  = cfg.capacidades;
     const mgmt = cfg.manejo_restricciones;
     const esp  = cfg.respuestas_especiales;
+    const prog = cfg.programacion;
+    const progSection = prog ? `
+
+=== PROGRAMACIÓN ===
+Nivel: ${prog.nivel}
+Lenguajes fuertes: ${(prog.lenguajes_fuertes || []).join(', ')}
+${(prog.reglas || []).map(r => '- ' + r).join('\n')}` : '';
     return `Eres ${id.nombre}. ${id.descripcion}
 
 === IDENTIDAD ===
@@ -38,6 +45,7 @@ ${per.caracteristicas.map(c => '- ' + c).join('\n')}
 
 === CAPACIDADES ===
 ${cap.permitido.map(c => '✅ ' + c).join('\n')}
+${progSection}
 
 === RESTRICCIONES ===
 ${cap.restringido.map(c => '🚫 ' + c).join('\n')}
@@ -972,20 +980,20 @@ Orden obligatorio: primero una confirmación breve (1-2 frases, ej. "Listo, ya c
       const codeIconSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>`;
       const fileIconSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`;
 
-      const cardHtml = `<div class="file-card">
+      const cardHtml = `<div class="file-card" onclick="openFileViewer('${codeId}', '${langLabel}', '${filenameAttr}')" title="Ver código">
         <div class="file-card-icon">${isCode ? codeIconSvg : fileIconSvg}</div>
         <div class="file-card-info">
           <div class="file-card-title">${title}</div>
           <div class="file-card-subtitle">${subtitle}</div>
         </div>
         <div class="file-card-actions">
-          <button class="file-card-copy-btn" onclick="copyCodeBlock(this, '${codeId}')" title="Copiar">
+          <button class="file-card-copy-btn" onclick="event.stopPropagation(); copyCodeBlock(this, '${codeId}')" title="Copiar">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="9" y="9" width="13" height="13" rx="2"/>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
             </svg>
           </button>
-          <button class="file-card-download-btn" onclick="downloadCodeBlock('${codeId}', '${langLabel}', '${filenameAttr}')">Descargar</button>
+          <button class="file-card-download-btn" onclick="event.stopPropagation(); downloadCodeBlock('${codeId}', '${langLabel}', '${filenameAttr}')">Descargar</button>
         </div>
         <pre id="${codeId}" data-lang="${langLabel}" style="display:none;"><code>${escapedCode}</code></pre>
       </div>`;
@@ -1590,6 +1598,86 @@ Orden obligatorio: primero una confirmación breve (1-2 frases, ej. "Listo, ya c
 
     const blob = new Blob([code], { type: 'text/plain;charset=utf-8' });
     saveBlob(blob, finalFilename);
+  }
+
+  /* ─── VISOR DE CÓDIGO (con vista previa en vivo para HTML) ─── */
+  // Lenguajes/extensiones que se consideran HTML ejecutable en el iframe de preview.
+  const HTML_PREVIEWABLE = ['html', 'htm'];
+
+  function isHtmlFile(lang, filename) {
+    const l = (lang || '').toLowerCase();
+    if (HTML_PREVIEWABLE.includes(l)) return true;
+    if (filename && /\.html?$/i.test(filename)) return true;
+    return false;
+  }
+
+  function ensureFileViewer() {
+    if (document.getElementById('file-viewer-overlay')) return;
+    const overlay = document.createElement('div');
+    overlay.id = 'file-viewer-overlay';
+    overlay.className = 'file-viewer-overlay';
+    overlay.onclick = (e) => { if (e.target === overlay) closeFileViewer(); };
+    overlay.innerHTML = `
+      <div class="file-viewer-modal">
+        <div class="file-viewer-header">
+          <div class="file-viewer-title" id="file-viewer-title">Archivo</div>
+          <div class="file-viewer-tabs" id="file-viewer-tabs" style="display:none;">
+            <button class="file-viewer-tab active" id="file-viewer-tab-code" onclick="switchViewerTab('code')">Código</button>
+            <button class="file-viewer-tab" id="file-viewer-tab-preview" onclick="switchViewerTab('preview')">Vista previa</button>
+          </div>
+          <button class="file-viewer-close" onclick="closeFileViewer()" title="Cerrar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="file-viewer-body">
+          <pre class="file-viewer-code" id="file-viewer-code"><code id="file-viewer-code-inner"></code></pre>
+          <iframe class="file-viewer-iframe" id="file-viewer-iframe" style="display:none;" sandbox="allow-scripts allow-modals allow-forms allow-popups"></iframe>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+  }
+
+  function openFileViewer(codeId, lang, filename) {
+    const pre = document.getElementById(codeId);
+    if (!pre) return;
+    const code = pre.querySelector('code').textContent;
+
+    ensureFileViewer();
+
+    document.getElementById('file-viewer-title').textContent = filename || (lang ? `Código (${lang})` : 'Código');
+    document.getElementById('file-viewer-code-inner').textContent = code;
+
+    const isHtml = isHtmlFile(lang, filename);
+    const tabs = document.getElementById('file-viewer-tabs');
+    const iframe = document.getElementById('file-viewer-iframe');
+
+    if (isHtml) {
+      tabs.style.display = 'flex';
+      iframe.srcdoc = code;
+      switchViewerTab('preview');
+    } else {
+      tabs.style.display = 'none';
+      switchViewerTab('code');
+    }
+
+    document.getElementById('file-viewer-overlay').classList.add('open');
+  }
+
+  function switchViewerTab(tab) {
+    const codeEl = document.getElementById('file-viewer-code');
+    const iframe = document.getElementById('file-viewer-iframe');
+    const tabCode = document.getElementById('file-viewer-tab-code');
+    const tabPreview = document.getElementById('file-viewer-tab-preview');
+    const showCode = tab === 'code';
+    codeEl.style.display = showCode ? 'block' : 'none';
+    iframe.style.display = showCode ? 'none' : 'block';
+    if (tabCode) tabCode.classList.toggle('active', showCode);
+    if (tabPreview) tabPreview.classList.toggle('active', !showCode);
+  }
+
+  function closeFileViewer() {
+    const overlay = document.getElementById('file-viewer-overlay');
+    if (overlay) overlay.classList.remove('open');
   }
 
   /* ─── DESCARGAR MENSAJE COMPLETO COMO ARCHIVO ─── */
