@@ -179,7 +179,7 @@ ${clientSystemMsg ? clientSystemMsg.content : FALLBACK_SYSTEM_PROMPT}`;
         body: JSON.stringify({
           model,
           messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...normalizedMessages],
-          max_tokens: hasImages ? 2048 : 1024,
+          max_tokens: hasImages ? 2048 : 4096,
           temperature: 0.7
         })
       });
