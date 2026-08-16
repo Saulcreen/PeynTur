@@ -24,9 +24,7 @@ export default async function handler(req, res) {
     const tavilyKey  = process.env.TAVILY_API_KEY;
     const tavilyKey2 = process.env.TAVILY_API_KEY_2;
 
-    let SYSTEM_PROMPT = `FECHA Y HORA ACTUAL: ${fechaHoy}, ${horaHoy} (hora de Lima, Perú). Usa esto siempre que el usuario pregunte por fechas, estrenos, eventos próximos o cualquier referencia temporal. Nunca inventes fechas.
-
-Eres PeynTur, un asistente de inteligencia artificial creado para ayudar a las personas de forma clara, honesta y con buen humor.
+    let FALLBACK_SYSTEM_PROMPT = `Eres PeynTur, un asistente de inteligencia artificial creado para ayudar a las personas de forma clara, honesta y con buen humor.
 PERSONALIDAD:
 Tono amable, directo y con toque de humor natural
 Idioma principal: español (pero te adaptas al idioma del usuario)
@@ -70,8 +68,20 @@ Si contiene texto, léelo y transcríbelo fielmente
 Si hace una pregunta sobre la imagen, respóndela con detalle
 Si no hay instrucción, describe lo que ves de forma clara y útil`;
 
+    // El frontend arma su propio system prompt a partir de comportamiento.json
+    // y lo manda como el primer mensaje de rol 'system'. Ese es el que debe
+    // mandar de verdad (así se puede editar comportamiento.json sin tocar ni
+    // redeployar este archivo). El texto de arriba queda solo como respaldo
+    // por si ese fetch falla en el navegador y no llega ningún system message.
+    const clientSystemMsg = messages.find(m => m.role === 'system' && typeof m.content === 'string' && m.content.trim());
+    const conversationMessages = messages.filter(m => m.role !== 'system');
+
+    let SYSTEM_PROMPT = `FECHA Y HORA ACTUAL: ${fechaHoy}, ${horaHoy} (hora de Lima, Perú). Usa esto siempre que el usuario pregunte por fechas, estrenos, eventos próximos o cualquier referencia temporal. Nunca inventes fechas.
+
+${clientSystemMsg ? clientSystemMsg.content : FALLBACK_SYSTEM_PROMPT}`;
+
     // Último mensaje del usuario
-    const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+    const lastUserMsg = [...conversationMessages].reverse().find(m => m.role === 'user');
     const userText = typeof lastUserMsg?.content === 'string' ? lastUserMsg.content.toLowerCase() : '';
 
     // Palabras clave que activan búsqueda de actualidad
@@ -127,13 +137,13 @@ Si no hay instrucción, describe lo que ves de forma clara y útil`;
       }
     }
 
-    const hasImages = messages.some(m => Array.isArray(m.content) && m.content.some(b => b.type === 'image_url' || b.type === 'image'));
+    const hasImages = conversationMessages.some(m => Array.isArray(m.content) && m.content.some(b => b.type === 'image_url' || b.type === 'image'));
 
     // Normaliza los bloques 'image' (formato tipo Anthropic que manda el frontend)
     // al formato image_url que espera la API de Mistral, y si un mensaje trae
     // imagen(es) sin ningún texto, agrega una instrucción explícita de OCR para
     // que el modelo siempre sepa qué hacer con la imagen.
-    const normalizedMessages = messages.map(m => {
+    const normalizedMessages = conversationMessages.map(m => {
       if (!Array.isArray(m.content)) return m;
 
       const blocks = m.content.map(b => {
