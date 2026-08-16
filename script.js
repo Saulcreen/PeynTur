@@ -1649,12 +1649,38 @@ Orden obligatorio: primero una confirmación breve (1-2 frases, ej. "Listo, ya c
     document.body.appendChild(overlay);
   }
 
+  // Script que se inyecta en el HTML previsualizado para que los enlaces
+  // nunca naveguen el iframe fuera de sí mismo: los internos (#id) hacen
+  // scroll suave dentro del propio preview, y cualquier otro se abre en una
+  // pestaña nueva del navegador real, en vez de reemplazar la vista previa.
+  const VIEWER_LINK_GUARD = `
+<base target="_blank">
+<script>
+document.addEventListener('click', function (e) {
+  const a = e.target.closest('a');
+  if (!a) return;
+  const href = a.getAttribute('href') || '';
+  if (href.startsWith('#') && href.length > 1) {
+    e.preventDefault();
+    const el = document.getElementById(href.slice(1));
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } else if (!href || href === '#') {
+    e.preventDefault();
+  }
+});
+<\/script>`;
+
   function openFileViewer(codeId, lang, filename) {
     const pre = document.getElementById(codeId);
     if (!pre) return;
     const code = pre.querySelector('code').textContent;
 
     ensureFileViewer();
+
+    // Mostrar el modal ANTES de tocar el iframe: si se le asigna srcdoc
+    // mientras está oculto (display:none), algunos navegadores no lo
+    // renderizan hasta el siguiente repintado, y se ve en blanco.
+    document.getElementById('file-viewer-overlay').classList.add('open');
 
     document.getElementById('file-viewer-title').textContent = filename || (lang ? `Código (${lang})` : 'Código');
     document.getElementById('file-viewer-code-inner').textContent = code;
@@ -1665,14 +1691,16 @@ Orden obligatorio: primero una confirmación breve (1-2 frases, ej. "Listo, ya c
 
     if (isHtml) {
       tabs.style.display = 'flex';
-      iframe.srcdoc = code;
       switchViewerTab('preview');
+      // rAF para asegurar que el iframe ya esté visible/en el layout
+      // antes de navegarlo, y así evitar el bug del primer render en blanco.
+      requestAnimationFrame(() => {
+        iframe.srcdoc = code + VIEWER_LINK_GUARD;
+      });
     } else {
       tabs.style.display = 'none';
       switchViewerTab('code');
     }
-
-    document.getElementById('file-viewer-overlay').classList.add('open');
   }
 
   function switchViewerTab(tab) {
@@ -1690,6 +1718,8 @@ Orden obligatorio: primero una confirmación breve (1-2 frases, ej. "Listo, ya c
   function closeFileViewer() {
     const overlay = document.getElementById('file-viewer-overlay');
     if (overlay) overlay.classList.remove('open');
+    const iframe = document.getElementById('file-viewer-iframe');
+    if (iframe) iframe.srcdoc = '';
   }
 
   /* ─── DESCARGAR MENSAJE COMPLETO COMO ARCHIVO ─── */
