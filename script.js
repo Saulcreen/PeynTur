@@ -28,6 +28,7 @@
     const prog = cfg.programacion;
     const dis  = cfg.diseno;
     const segu = cfg.seguimiento_instrucciones;
+    const edic = cfg.edicion_de_codigo;
     const progSection = prog ? `
 
 === PROGRAMACIÓN ===
@@ -86,7 +87,7 @@ Elige siempre un nombre de archivo corto y descriptivo (sin espacios raros) con 
 Actualmente no puedes generar archivos PDF reales; si te piden un PDF, ofrece un Word (\`\`\`word:...\`\`\`) o texto plano en su lugar y acláralo brevemente.
 NUNCA digas que no puedes crear, generar o compartir archivos ni código: SIEMPRE puedes hacerlo usando el bloque de código de arriba. No sugieras que el usuario copie y pegue el contenido a mano; la tarjeta descargable ya hace eso por él.
 Orden obligatorio de la respuesta cuando generes un archivo o código: primero una confirmación breve (1-2 frases, ej. "Listo, ya creé tu archivo" o "Aquí tienes tu documento"), y justo después el bloque de código con el archivo, SIN NADA más a continuación. NUNCA agregues explicaciones, listas de "qué puedes hacer con esto" ni resúmenes antes o después del bloque: eso ya está en el bloque de código y mostrarlo dos veces es redundante.
-
+${edic ? `\n=== EDICIÓN DE CÓDIGO EXISTENTE ===\n${edic.formato}\n${(edic.reglas || []).map(r => '- ' + r).join('\\n')}\n` : ''}
 NUNCA uses emojis bajo ninguna circunstancia.
 Antes de responder, revisa que cumpliste TODOS los requisitos explícitos del pedido del usuario (colores, textos, estructura, cantidad, tecnología) y que el diseño no es genérico.`;
   }
@@ -1358,6 +1359,96 @@ Orden obligatorio: primero una confirmación breve (1-2 frases, ej. "Listo, ya c
     return mapped;
   }
 
+  /* ─── EDICIÓN QUIRÚRGICA DE CÓDIGO (BUSCAR/REEMPLAZAR) ───
+     En vez de confiar en que el modelo reproduzca de memoria un archivo
+     entero sin tocar nada más, cuando pide editar algo existente responde
+     con bloques <!--EDITAR:archivo--><<<<<<< BUSCAR ... ======= ... >>>>>>> REEMPLAZAR.
+     Acá se busca el código real (generado antes por el bot, o pegado/subido
+     por el usuario) en el historial de la conversación y se aplica el
+     cambio de forma mecánica, así el resto del archivo queda garantizado
+     intacto sin depender de la memoria del modelo. */
+
+  function findBaseCodeForFilename(filename) {
+    const target = filename.trim().toLowerCase();
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      const content = typeof m.content === 'string' ? m.content : null;
+      if (!content) continue;
+
+      if (m.role === 'assistant') {
+        const re = /```([\w+-]*)?(?::([^\n`]+))?\n?([\s\S]*?)```/g;
+        let match, found = null;
+        while ((match = re.exec(content))) {
+          const fn = (match[2] || '').trim().toLowerCase();
+          if (fn === target) found = match[3];
+        }
+        if (found !== null) return found;
+      } else if (m.role === 'user') {
+        const re = /\[(?:Documento|Archivo) adjunto: ([^\](]+)[^\]]*\]\n([\s\S]*)/;
+        const match = content.match(re);
+        if (match && match[1].trim().toLowerCase() === target) return match[2];
+      }
+    }
+    return null;
+  }
+
+  function resolveCodeEdits(reply) {
+    if (!/<!--EDITAR:/.test(reply)) return reply;
+    const EDIT_SRC = '<!--EDITAR:([^\\n>]+?)-->\\s*\\n<<<<<<< BUSCAR\\n([\\s\\S]*?)\\n=======\\n([\\s\\S]*?)\\n>>>>>>> REEMPLAZAR';
+
+    // 1) Agrupar todas las ediciones por archivo, en el orden en que aparecen
+    const editsByFile = new Map();
+    const re1 = new RegExp(EDIT_SRC, 'g');
+    let m;
+    while ((m = re1.exec(reply))) {
+      const filename = m[1].trim();
+      if (!editsByFile.has(filename)) editsByFile.set(filename, []);
+      editsByFile.get(filename).push({ buscar: m[2], reemplazar: m[3] });
+    }
+
+    // 2) Por cada archivo: buscar el código base real y aplicar los cambios en orden
+    const resultByFile = new Map();
+    for (const [filename, edits] of editsByFile) {
+      const baseCode = findBaseCodeForFilename(filename);
+      if (baseCode === null) {
+        resultByFile.set(filename, {
+          ok: false,
+          msg: `No encontré una versión anterior de **${filename}** en esta conversación para aplicar el cambio. ¿Puedes compartir el archivo de nuevo?`
+        });
+        continue;
+      }
+      let code = baseCode;
+      let failed = false;
+      for (const { buscar, reemplazar } of edits) {
+        const parts = code.split(buscar);
+        if (parts.length !== 2) { failed = true; break; }
+        code = parts.join(reemplazar);
+      }
+      if (failed) {
+        resultByFile.set(filename, {
+          ok: false,
+          msg: `No pude aplicar el cambio en **${filename}** con precisión (el texto de referencia no coincidió exactamente una vez). Pídeme que lo intente de nuevo describiéndolo con más detalle.`
+        });
+      } else {
+        const ext = (filename.split('.').pop() || 'texto').toLowerCase();
+        resultByFile.set(filename, { ok: true, block: '```' + ext + ':' + filename + '\n' + code + '\n```' });
+      }
+    }
+
+    // 3) Reemplazar en el texto: la primera aparición de cada archivo se
+    // convierte en el bloque de código final (o el mensaje de error);
+    // repeticiones del mismo archivo (ya aplicadas arriba) se eliminan.
+    const seen = new Set();
+    const re2 = new RegExp(EDIT_SRC, 'g');
+    return reply.replace(re2, (full, filenameRaw) => {
+      const filename = filenameRaw.trim();
+      if (seen.has(filename)) return '';
+      seen.add(filename);
+      const r = resultByFile.get(filename);
+      return r.ok ? r.block : r.msg;
+    });
+  }
+
   async function callAPI(isFirst) {
     const chatArea = document.getElementById('chat-area');
     const typingId = 'typing-' + Date.now();
@@ -1393,7 +1484,7 @@ Orden obligatorio: primero una confirmación breve (1-2 frases, ej. "Listo, ya c
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || data.message || `Error ${res.status}`);
-      const reply = data.choices[0].message.content;
+      const reply = resolveCodeEdits(data.choices[0].message.content);
 
       messages.push({ role: 'assistant', content: reply });
       document.getElementById(typingId)?.remove();
