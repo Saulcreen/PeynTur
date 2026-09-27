@@ -14,12 +14,12 @@ export default async function handler(req, res) {
   // chequeo se vuelve estricto automáticamente sin tocar código de nuevo.
   const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
     .split(',')
-    .map(s => s.trim())
+    .map(s => s.trim().replace(/\/+$/, '')) // normaliza quitando barra(s) final(es)
     .filter(Boolean);
 
-  const origin = req.headers.origin || '';
+  const origin = (req.headers.origin || '').replace(/\/+$/, '');
   if (ALLOWED_ORIGINS.length > 0 && !ALLOWED_ORIGINS.includes(origin)) {
-    return res.status(403).json({ error: 'Origen no autorizado' });
+    return res.status(403).json({ error: 'Origen no autorizado', origenRecibido: origin });
   }
 
   try {
