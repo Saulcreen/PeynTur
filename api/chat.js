@@ -157,15 +157,17 @@ ${clientSystemMsg ? clientSystemMsg.content : FALLBACK_SYSTEM_PROMPT}`;
     const hasImages = conversationMessages.some(m => Array.isArray(m.content) && m.content.some(b => b.type === 'image_url' || b.type === 'image'));
 
     // Normaliza los bloques 'image' (formato tipo Anthropic que manda el frontend)
-    // al formato image_url que espera la API de Mistral, y si un mensaje trae
-    // imagen(es) sin ningún texto, agrega una instrucción explícita de OCR para
+    // al formato image_url ESTÁNDAR de OpenAI: { type:'image_url', image_url:{url:'data:...'} }.
+    // OJO: Mistral aceptaba image_url como string plano; la capa de compatibilidad
+    // OpenAI de Gemini espera el objeto anidado con "url". Si un mensaje trae
+    // imagen(es) sin ningún texto, se agrega una instrucción explícita de OCR para
     // que el modelo siempre sepa qué hacer con la imagen.
     const normalizedMessages = conversationMessages.map(m => {
       if (!Array.isArray(m.content)) return m;
 
       const blocks = m.content.map(b => {
         if (b.type === 'image') {
-          return { type: 'image_url', image_url: `data:${b.source.media_type};base64,${b.source.data}` };
+          return { type: 'image_url', image_url: { url: `data:${b.source.media_type};base64,${b.source.data}` } };
         }
         return b;
       });
@@ -182,15 +184,17 @@ ${clientSystemMsg ? clientSystemMsg.content : FALLBACK_SYSTEM_PROMPT}`;
       return { role: m.role, content: blocks };
     });
 
-    // Modelo con visión confirmado en la documentación oficial de Mistral
-    // (docs.mistral.ai/capabilities/vision usa "mistral-small-latest" en su
-    // propio ejemplo de envío de imágenes). pixtral-12b y pixtral-large ya
-    // están deprecados/retirados, así que no se usan.
-    const model = hasImages ? 'mistral-small-latest' : 'mistral-small-latest';
+    // Modelo Gemini confirmado funcionando en pruebas directas (flash-lite: rápido
+    // y barato, pensado justo para chat). Si en el futuro hace falta más capacidad
+    // de razonamiento, la alternativa confirmada es 'gemini-3-flash-preview'
+    // (más lenta, con "thinking" activado).
+    const model = 'gemini-3.5-flash-lite';
 
-    // Función para llamar a Mistral
-    async function llamarMistral(key) {
-      const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+    // Función para llamar a Gemini vía su capa de compatibilidad con OpenAI,
+    // para no tener que tocar el resto del código (mismo formato de mensajes
+    // y de respuesta que ya usaba Mistral).
+    async function llamarGemini(key) {
+      const response = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
         body: JSON.stringify({
@@ -203,32 +207,36 @@ ${clientSystemMsg ? clientSystemMsg.content : FALLBACK_SYSTEM_PROMPT}`;
       if (!response.ok) {
         let details = '';
         try { details = await response.text(); } catch (_) {}
-        throw new Error(`Mistral status ${response.status}: ${details}`);
+        throw new Error(`Gemini status ${response.status}: ${details}`);
       }
       return await response.json();
     }
 
-    // Llamada a Mistral con doble key y fallback automático
+    // Llamada a Gemini con doble key y fallback automático.
+    // OJO: si ambas keys (API_KEY_IA y API_KEY_IA_2) son del MISMO proyecto de
+    // Google Cloud/AI Studio, esto NO duplica la cuota — Gemini limita por
+    // proyecto, no por key (a diferencia de lo que se asumía con Mistral). Este
+    // fallback solo ayuda si una key se revoca o es de otro proyecto distinto.
     let data = null;
 
     if (apiKey) {
       try {
-        data = await llamarMistral(apiKey);
+        data = await llamarGemini(apiKey);
       } catch (err) {
-        console.error('Mistral key 1 falló, intentando key 2:', err.message);
+        console.error('Gemini key 1 falló, intentando key 2:', err.message);
       }
     }
 
     if (!data && apiKey2) {
       try {
-        data = await llamarMistral(apiKey2);
+        data = await llamarGemini(apiKey2);
       } catch (err) {
-        console.error('Mistral key 2 también falló:', err.message);
-        return res.status(500).json({ error: 'Ambas keys de Mistral fallaron', details: err.message });
+        console.error('Gemini key 2 también falló:', err.message);
+        return res.status(500).json({ error: 'Ambas keys de Gemini fallaron', details: err.message });
       }
     }
 
-    if (!data) return res.status(500).json({ error: 'No hay keys de Mistral disponibles' });
+    if (!data) return res.status(500).json({ error: 'No hay keys de Gemini disponibles' });
 
     return res.status(200).json(data);
 
