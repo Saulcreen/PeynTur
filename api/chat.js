@@ -14,8 +14,14 @@ export default async function handler(req, res) {
   // chequeo se vuelve estricto automáticamente sin tocar código de nuevo.
   const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
     .split(',')
-    .map(s => s.trim().replace(/\/+$/, '')) // normaliza quitando barra(s) final(es)
-    .filter(Boolean);
+    .map(s => s.trim())
+    .filter(Boolean)
+    .map(s => {
+      // Tolera que alguien pegue una URL con ruta incluida (ej. ".../PeynTur")
+      // en vez de solo el dominio: nos quedamos solo con protocolo+host, que es
+      // lo único que el header Origin puede traer.
+      try { return new URL(s).origin; } catch (_) { return s.replace(/\/+$/, ''); }
+    });
 
   const origin = (req.headers.origin || '').replace(/\/+$/, '');
   if (ALLOWED_ORIGINS.length > 0 && !ALLOWED_ORIGINS.includes(origin)) {
