@@ -19,6 +19,7 @@ export default async function handler(req, res) {
 
   const origin = (req.headers.origin || '').replace(/\/+$/, '');
   if (ALLOWED_ORIGINS.length > 0 && !ALLOWED_ORIGINS.includes(origin)) {
+    console.error('Origen rechazado. Recibido:', JSON.stringify(origin), '| Permitidos:', JSON.stringify(ALLOWED_ORIGINS));
     return res.status(403).json({ error: 'Origen no autorizado', origenRecibido: origin });
   }
 
