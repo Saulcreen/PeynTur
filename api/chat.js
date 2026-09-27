@@ -5,6 +5,23 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Método no permitido' });
 
+  // Whitelist de orígenes permitidos, configurada en Vercel (Settings > Environment
+  // Variables) como ALLOWED_ORIGINS, separados por coma. Ej:
+  // ALLOWED_ORIGINS=https://tuusuario.github.io,https://peyntur.vercel.app
+  //
+  // Mientras la variable no exista (string vacío), no se bloquea nada, para no
+  // romper el sitio antes de configurarla. En cuanto la agregues en Vercel, este
+  // chequeo se vuelve estricto automáticamente sin tocar código de nuevo.
+  const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  const origin = req.headers.origin || '';
+  if (ALLOWED_ORIGINS.length > 0 && !ALLOWED_ORIGINS.includes(origin)) {
+    return res.status(403).json({ error: 'Origen no autorizado' });
+  }
+
   try {
     const { messages } = req.body;
 
